@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import render_template, flash, redirect, url_for
+from flask_login import current_user
+from flask_user import login_required
 
 from app import app
 from app.forms.log_reg import LoginForm
@@ -7,6 +9,7 @@ from app.forms.log_reg import LoginForm
 
 @app.route('/')
 @app.route('/index')
+@login_required
 def index():
     user = {'username': 'Norg'}
     return render_template("index.html", title='Home', user=user)
@@ -14,6 +17,8 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
     form = LoginForm()
     if form.validate_on_submit():
         flash('Login requested for user {}, remember_me={}'.format(

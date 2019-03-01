@@ -19,7 +19,7 @@ class CertainDomains(object):
             success = success or field.data.endswith(domain)
         if not success:
             if self.message is None:
-                message = field.gettext('Требуется корпоративный почтовый ящик.')
+                message = field.gettext('Corporate email is required.')
             else:
                 message = self.message
 
