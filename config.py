@@ -9,8 +9,8 @@ class Config(object):
         'sqlite:///' + os.path.join(basedir, 'app-test.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     USER_APP_NAME = 'Кофе-Ин'
-    BABEL_DEFAULT_LOCALE: 'ru'
-    BABEL_DEFAULT_TIMEZONE: 'UTC+4'
+    BABEL_DEFAULT_LOCALE = 'ru'
+    BABEL_DEFAULT_TIMEZONE = 'UTC+4'
 
     APP_VERSION = '0.1a'
 

@@ -1,4 +1,5 @@
-from flask_user import EmailManager
+from flask_user import EmailManager, UserManager
+import logging
 
 
 class EmailManagerWithDomainValidation(EmailManager):
@@ -6,10 +7,33 @@ class EmailManagerWithDomainValidation(EmailManager):
     def __init__(self, app, domains=["sberbank.ru"]):
         super().__init__(app)
         self.domains = domains
+        self.app = app
+        logging.info("EmailManagerWithDomainValidation INIT")
+
+    def __repr__(self):
+        return 'EmailManagerWithDomainValidation'
+
+    def _render_and_send_email(self, email, user, template_filename, **kwargs):
+        if self.validate(user.email):
+            super()._render_and_send_email(email, user, template_filename, **kwargs)
 
     def send_confirm_email_email(self, user, user_email):
+        if self.validate(user_email.email):
+            super().send_confirm_email_email(self, user, user_email)
+
+    def validate(self, email):
         success = False
         for domain in self.domains:
-            success = success or user_email.endswith(domain)
-        if success:
-            super().send_confirm_email_email(user, user_email)
+            success = success or email.endswith(domain)
+        if not success:
+            raise Exception("Corporate email required.")
+        else:
+            return success
+
+
+class CustomUserManager(UserManager):
+
+    def customize(self, app):
+        logging.info("CustomUserManager INIT")
+        self.email_manager = EmailManagerWithDomainValidation(app)
+        logging.info("self.email_manager = {}".format(self.email_manager))
