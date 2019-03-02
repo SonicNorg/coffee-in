@@ -1,1 +1,7 @@
 {% extends 'flask_user/_common_base.html' %}
+
+{% block menu %}
+    <a href="{{ url_for('index') }}">Состояние</a>
+    <a href="{{ url_for('price') }}">Прайс</a>
+    <a href="{{ url_for('user.logout') }}">Выход</a>
+{% endblock %}

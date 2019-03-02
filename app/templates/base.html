@@ -5,15 +5,6 @@
     <title>{{ title }} - Coffee-in</title>
 </head>
 <body>
-<div>
-    Кофе-Ин:
-    <a href="{{ url_for('index') }}">Главная</a>
-    {% if current_user.is_anonymous %}
-    <a href="{{ url_for('user.login') }}">Вход</a>
-    {% else %}
-    <a href="{{ url_for('user.logout') }}">Выход</a>
-    {% endif %}
-</div>
 <hr>
 {% with messages = get_flashed_messages() %}
 {% if messages %}

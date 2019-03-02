@@ -23,5 +23,5 @@ class CertainDomains(object):
             else:
                 message = self.message
 
-            # field.errors[:] = []
+            field.errors[:] = []
             raise ValidationError(message)

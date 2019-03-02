@@ -1,5 +1,8 @@
-from flask_user import EmailManager, UserManager
+import os
+from flask_user import EmailManager, UserManager, forms
 import logging
+
+from app.service.validators import CertainDomains
 
 
 class EmailManagerWithDomainValidation(EmailManager):
@@ -31,9 +34,20 @@ class EmailManagerWithDomainValidation(EmailManager):
             return success
 
 
+class CustomUserProfileForm(forms.EditUserProfileForm):
+    pass
+
+
+class CustomRegisterForm(forms.RegisterForm):
+
+    def validate(self):
+        self.email.validators.append(CertainDomains(os.environ.get('CORPORATE_DOMAIN', 'gmail.com').split()))
+        return super().validate()
+
+
 class CustomUserManager(UserManager):
 
     def customize(self, app):
         logging.info("CustomUserManager INIT")
-        self.email_manager = EmailManagerWithDomainValidation(app)
-        logging.info("self.email_manager = {}".format(self.email_manager))
+        self.RegisterFormClass = CustomRegisterForm
+        self.UserProfileFormClass = CustomUserProfileForm

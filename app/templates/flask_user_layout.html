@@ -43,11 +43,9 @@
             {% endif %}
         </div>
     </div>
-    {% block menu %}
     <div id="menu-div" class="with-margins">
-        <a href="/">{%trans%}Home page ya skazal{%endtrans%}</a>
+        {% block menu %}{% endblock %}
     </div>
-    {% endblock %}
     <hr class="no-margins"/>
     <div id="main-div" class="with-margins">
     {# One-time system messages called Flash messages #}

@@ -1,29 +1,30 @@
-{% extends "flask_user/_authorized_base.html" %}
+{% extends 'flask_user/_authorized_base.html' %}
 
 {% block content %}
-<h1>Hi, {{ user.username }}!</h1>
-<h3>Текущая закупка: {{ current_buy }}</h3>
-<h4>Мой заказ в офис: {{ my_office_order }}</h4>
-<br>
-<h4>Мои заказы себе:</h4>
+<h2>Текущий прайс</h2>
+<h3>Действителен до: {{ date_to }}</h3>
 <table class="table table-striped table-hover">
     <thead>
     <tr>
     <th>Сорт</th>
     <th>Описание</th>
-    <th>Кол-во</th>
     <th>Цена от 25 кг</th>
     <th>Цена от 50 кг</th>
+    <th>Заказ, кг</th>
     </tr>
     </thead>
     <tbody>
-    {% for coffee in my_own_order %}
+    {% for coffee in coffee_with_prices %}
     <tr>
         <td>{{ coffee.name }}</td>
         <td>{{ coffee.description }}</td>
-        <td>{{ coffee.amount }} кг</td>
         <td>{{ coffee.price25 }} руб.</td>
         <td>{{ coffee.price50 }} руб.</td>
+        <form action="{{ url_for('order') }}" method="post">
+            {{ form.hidden_tag() }}
+            {{ form.id(hidden='hidden', value=coffee.id) }}
+            <td>{{ form.amount(style='width: 60px', type='number', step=0.5) }}{{ form.submit() }}</td>
+        </form>
     </tr>
     {% endfor %}
     </tbody>
