@@ -2,5 +2,5 @@ flask
 flask-wtf
 flask-sqlalchemy
 flask-migrate
-Flask-User
+flask-user
 Flask-BabelEx

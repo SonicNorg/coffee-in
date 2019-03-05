@@ -29,4 +29,12 @@
     {% endfor %}
     </tbody>
 </table>
+<h4>Добавить в текущий прайс:</h4>
+<form action="{{ url_for('price') }}" method="post">
+    {{ add_form.hidden_tag() }}
+    {{ add_form.coffee() }}
+    {{ add_form.price25(type='number') }}
+    {{ add_form.price50(type='number') }}
+    {{ add_form.submit() }}
+</form>
 {% endblock %}

@@ -24,20 +24,21 @@ from app import routes, models
 babel = Babel(app)
 user_manager = CustomUserManager(app, db, User)
 
-# Init roles and admin
 
-roles = Role.query.all()
-logging.info('Roles: {}'.format(roles))
-if not roles:
-    dealer = Role(name='Дилер')
-    boss = Role(name='Босс')
-    db.session.add(dealer)
-    db.session.add(boss)
-    db.session.commit()
-    admin = User(username='Norg',
-                 email='pavel.proger@gmail.com',
-                 password=user_manager.hash_password('1qaz@WSX'),
-                 email_confirmed_at=datetime.now(),
-                 active=True, roles=[dealer, boss])
-    db.session.add(admin)
-    db.session.commit()
+@app.before_first_request
+def init_roles_and_admin():
+    roles = Role.query.all()
+    logging.info('Roles: {}'.format(roles))
+    if not roles:
+        dealer = Role(name='Дилер')
+        boss = Role(name='Босс')
+        db.session.add(dealer)
+        db.session.add(boss)
+        db.session.commit()
+        admin = User(username='Norg',
+                     email='pavel.proger@gmail.com',
+                     password=user_manager.hash_password('1qaz@WSX'),
+                     email_confirmed_at=datetime.now(),
+                     active=True, roles=[dealer, boss])
+        db.session.add(admin)
+        db.session.commit()

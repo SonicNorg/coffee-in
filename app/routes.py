@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
+
 from flask import render_template, url_for, flash
 from flask_login import current_user
 from flask_user import login_required
+from sqlalchemy import and_
 from werkzeug.utils import redirect
 
 from app import app
-from app.forms import OrderRowForm
+from app.forms import OrderRowForm, AddToPriceForm
+from app.models import CoffeePrice
 
 
 @app.route('/')
@@ -23,7 +27,7 @@ def index():
                            current_buy=current_buy, my_office_order=my_office_order, my_own_order=my_own_order)
 
 
-@app.route('/price')
+@app.route('/price', methods=["GET", "POST"])
 @login_required
 def price():
     date_to = '9 марта'
@@ -33,7 +37,16 @@ def price():
                            'price25': '880', 'price50': '770', 'id': '2'}
                           ]
     form = OrderRowForm()
-    return render_template('price.html', coffee_with_prices=coffee_with_prices, date_to=date_to, form=form)
+    add_form = AddToPriceForm()
+    # TODO get choices from CoffeeSort
+    add_form.set_choices([{1, 'Кофе 1'}, {2, 'Кофе 2'}])
+    CoffeePrice.query.filter(and_(CoffeePrice.date_from < datetime.now().date(),
+                                  CoffeePrice.date_to > datetime.now().date()))
+    # if add_form.validate():
+    #     db.session.add(CoffeePrice())
+    # TODO add price to current price
+    return render_template('price.html', coffee_with_prices=coffee_with_prices, date_to=date_to,
+                           form=form, add_form=add_form)
 
 
 @app.route('/order', methods=['POST'])

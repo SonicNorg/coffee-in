@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask_user import UserMixin
+from sqlalchemy.orm import relationship
 
 from app import db
 
@@ -50,7 +51,8 @@ class CoffeePrice(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     date_from = db.Column(db.Date())
     date_to = db.Column(db.Date())
-    coffee_type = db.Column(db.Integer, db.ForeignKey('coffee_prices.id'), nullable=False)
+    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id'), nullable=False)
+    coffee_type = relationship("CoffeeSort", backref="coffee_sorts")
     price = db.Column(db.Integer())
     price10 = db.Column(db.Integer())
     price25 = db.Column(db.Integer())
