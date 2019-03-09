@@ -45,14 +45,24 @@ class CoffeeSort(db.Model):
     name = db.Column(db.String(150), unique=True)
     description = db.Column(db.String(250))
 
+    def __repr__(self) -> str:
+        return 'Coffee sort id={}, name={}, description={}'.format(self.id, self.name, self.description)
+
+
+class Price(db.Model):
+    __tablename__ = 'prices'
+    id = db.Column(db.Integer(), primary_key=True)
+    date_from = db.Column(db.Date(), nullable=False)
+    date_to = db.Column(db.Date(), nullable=False)
+
 
 class CoffeePrice(db.Model):
     __tablename__ = 'coffee_prices'
     id = db.Column(db.Integer(), primary_key=True)
-    date_from = db.Column(db.Date())
-    date_to = db.Column(db.Date())
-    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id'), nullable=False)
+    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
     coffee_type = relationship("CoffeeSort", backref="coffee_sorts")
+    price_id = db.Column(db.Integer, db.ForeignKey('prices.id', ondelete='CASCADE'), nullable=False)
+    price_ref = relationship("Price", backref="prices")
     price = db.Column(db.Integer())
     price10 = db.Column(db.Integer())
     price25 = db.Column(db.Integer())

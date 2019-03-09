@@ -1,8 +1,8 @@
 """Init
 
-Revision ID: 790238e345a3
+Revision ID: fc5878f41606
 Revises: 
-Create Date: 2019-03-05 21:00:38.345502
+Create Date: 2019-03-08 16:17:20.503457
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '790238e345a3'
+revision = 'fc5878f41606'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -46,14 +46,14 @@ def upgrade():
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
     op.create_table('coffee_prices',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('date_from', sa.Date(), nullable=True),
-    sa.Column('date_to', sa.Date(), nullable=True),
     sa.Column('coffee_type_id', sa.Integer(), nullable=False),
+    sa.Column('price_id', sa.Integer(), nullable=False),
     sa.Column('price', sa.Integer(), nullable=True),
     sa.Column('price10', sa.Integer(), nullable=True),
     sa.Column('price25', sa.Integer(), nullable=True),
     sa.Column('price50', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['coffee_type_id'], ['coffee_sorts.id'], ),
+    sa.ForeignKeyConstraint(['price_id'], ['prices.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user_roles',

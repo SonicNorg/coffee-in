@@ -2,39 +2,63 @@
 
 {% block content %}
 <h2>Текущий прайс</h2>
-<h3>Действителен до: {{ date_to }}</h3>
-<table class="table table-striped table-hover">
-    <thead>
-    <tr>
-    <th>Сорт</th>
-    <th>Описание</th>
-    <th>Цена от 25 кг</th>
-    <th>Цена от 50 кг</th>
-    <th>Заказ, кг</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for coffee in coffee_with_prices %}
-    <tr>
-        <td>{{ coffee.name }}</td>
-        <td>{{ coffee.description }}</td>
-        <td>{{ coffee.price25 }} руб.</td>
-        <td>{{ coffee.price50 }} руб.</td>
-        <form action="{{ url_for('order') }}" method="post">
-            {{ form.hidden_tag() }}
-            {{ form.id(hidden='hidden', value=coffee.id) }}
-            <td>{{ form.amount(style='width: 60px', type='number', step=0.5) }}{{ form.submit() }}</td>
+{% if current_user.has_roles('Босс') %}
+    <a href="{{ url_for('manage_prices') }}">Управление прайсами</a>
+{% endif %}
+{% if not add_form %}
+    <h3>Отсутствует</h3>
+{% else %}
+    <h3>Действителен до: {{ date_to }}</h3>
+    <table class="table table-striped table-hover">
+        <thead>
+        <tr>
+        <th>Сорт</th>
+        <th>Описание</th>
+        <th>Цена от 25 кг</th>
+        <th>Цена от 50 кг</th>
+        <th>Заказ, кг</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for coffee in coffee_with_prices %}
+        <tr>
+            <td>{{ coffee.coffee_type.name }}</td>
+            <td>{{ coffee.coffee_type.description }}</td>
+            <td>{{ coffee.price25 }} руб.</td>
+            <td>{{ coffee.price50 }} руб.</td>
+            <form action="{{ url_for('order') }}" method="post">
+                {{ form.hidden_tag() }}
+                {{ form.id(hidden='hidden', value=coffee.id) }}
+                <td>{{ form.amount(style='width: 60px', type='number', step=0.5) }}{{ form.submit() }}</td>
+            </form>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if current_user.has_roles('Босс') %}
+        <h4>Добавить в текущий прайс:</h4>
+        <form action="{{ url_for('price') }}" method="post">
+            {{ add_form.hidden_tag() }}
+            {{ add_form.coffee() }}
+            {% if add_form.coffee.errors %}
+                {% for e in add_form.coffee.errors %}
+                    <p class="help-block alert alert-danger">{{ e }}</p>
+                {% endfor %}
+            {% endif %}
+            {{ add_form.price25(type='number') }}
+            {% if add_form.price25.errors %}
+                {% for e in add_form.price25.errors %}
+                    <p class="help-block alert alert-danger">{{ e }}</p>
+                {% endfor %}
+            {% endif %}
+            {{ add_form.price50(type='number') }}
+            {% if add_form.price50.errors %}
+                {% for e in add_form.price50.errors %}
+                    <p class="help-block alert alert-danger">{{ e }}</p>
+                {% endfor %}
+            {% endif %}
+            {{ add_form.submit() }}
         </form>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
-<h4>Добавить в текущий прайс:</h4>
-<form action="{{ url_for('price') }}" method="post">
-    {{ add_form.hidden_tag() }}
-    {{ add_form.coffee() }}
-    {{ add_form.price25(type='number') }}
-    {{ add_form.price50(type='number') }}
-    {{ add_form.submit() }}
-</form>
+    {% endif %}
+{% endif %}
 {% endblock %}

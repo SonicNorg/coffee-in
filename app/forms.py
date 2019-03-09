@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask_wtf import FlaskForm
-from wtforms import FloatField, SubmitField, IntegerField, SelectField
+from wtforms import FloatField, SubmitField, IntegerField, SelectField, StringField, DateField
 from wtforms.validators import DataRequired
 
 
@@ -11,10 +11,22 @@ class OrderRowForm(FlaskForm):
 
 
 class AddToPriceForm(FlaskForm):
-    coffee = SelectField(validators=[DataRequired()])
+    coffee = SelectField(coerce=int)
     price25 = FloatField(validators=[DataRequired()])
     price50 = FloatField(validators=[DataRequired()])
     submit = SubmitField('Добавить в прайс')
 
     def set_choices(self, choices):
         self.coffee.choices = choices
+
+
+class AddCoffeeForm(FlaskForm):
+    name = StringField(validators=[DataRequired()])
+    description = StringField(validators=[DataRequired()])
+    submit = SubmitField('Добавить кофе')
+
+
+class CreatePriceForm(FlaskForm):
+    date_from = DateField(validators=[DataRequired()])
+    date_to = DateField(validators=[DataRequired()])
+    submit = SubmitField('Создать новый прайс')
