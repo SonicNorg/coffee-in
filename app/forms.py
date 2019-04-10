@@ -30,3 +30,8 @@ class CreatePriceForm(FlaskForm):
     date_from = DateField(validators=[DataRequired()])
     date_to = DateField(validators=[DataRequired()])
     submit = SubmitField('Создать новый прайс')
+
+
+class BuyinForm(FlaskForm):
+    next_step = DateField()
+    submit = SubmitField('Создать новую закупку')

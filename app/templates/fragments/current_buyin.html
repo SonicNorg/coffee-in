@@ -1,0 +1,20 @@
+<div>
+    <h2>Текущая закупка</h2>
+    <table>
+        <tr>
+            <td>Статус:</td><td>{{ current_buyin.state.value[0] }}</td>
+        </tr>
+        <tr>
+            <td>Создана:</td><td>{{ current_buyin.created_at }}</td>
+        </tr>
+        <tr>
+            <td>{{ current_buyin.state.value[1] }}:</td><td>{{ current_buyin.next_step }}</td>
+        </tr>
+        <tr>
+            <td>Текущий объем:</td><td>{{ current_buyin.amount }}</td>
+        </tr>
+        <tr>
+            <td>Текущая сумма:</td><td>{{ current_buyin.price }}</td>
+        </tr>
+    </table>
+</div>

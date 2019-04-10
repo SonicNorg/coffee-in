@@ -9,8 +9,10 @@ from sqlalchemy import and_
 from werkzeug.utils import redirect
 
 from app import app, db
-from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm
-from app.models import CoffeePrice, CoffeeSort, Price
+from app.dtos import IndividualOrderWithPrices
+from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm
+from app.models import CoffeePrice, CoffeeSort, Price, IndividualOrder, Buyin, States, OrderRow
+from app.util import get_open_price
 
 
 @app.route('/')
@@ -20,21 +22,17 @@ def index():
     current_buy = {'close_date': '5 марта', 'coffee': 'Бразилия Серрадо',
                    'amount': '26', 'price': '560', 'total': '18 000'}
     my_office_order = {'my_office_order': '1,6 кг'}
-    my_own_order = [{'name': 'Бразилия Серрадо', 'description': 'низкая кислотность',
-                     'amount': '1', 'price25': '520', 'price50': '490'},
-                    {'name': 'Коста-Рика Азалия', 'description': 'низкая кислотность',
-                     'amount': '0,5', 'price25': '880', 'price50': '770'}]
-    return render_template('index.html', title='Home', user=current_user,
-                           current_buy=current_buy, my_office_order=my_office_order, my_own_order=my_own_order)
+    open_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
+    my_own_order = IndividualOrder.query.filter(and_(IndividualOrder.buyin_id == open_buyin.id,
+                                                     IndividualOrder.user_id == current_user.id)).first()
+    return render_template('index.html', title='Home', user=current_user, current_buyin=open_buyin,
+                           my_office_order=my_office_order, my_own_order=IndividualOrderWithPrices(my_own_order).rows)
 
 
 @app.route('/price', methods=["GET", "POST"])
 @login_required
 def price():
-    current_price = Price.query\
-        .order_by(Price.date_to.desc())\
-        .filter(and_(Price.date_from <= datetime.now().date(), datetime.now().date() <= Price.date_to))\
-        .first()
+    current_price = get_open_price()
     if current_price:
         add_form = AddToPriceForm()
         coffee_type_id = add_form.coffee.data
@@ -59,6 +57,7 @@ def price():
         add_form = None
         coffee_with_prices = []
     logging.info("%s", current_price)
+    # TODO если нет текущего прайса, то и заказ сделать нельзя!
     form = OrderRowForm()
     return render_template('price.html', coffee_with_prices=coffee_with_prices,
                            date_to=current_price.date_to if current_price else None,
@@ -69,7 +68,7 @@ def price():
 @login_required
 def coffee():
     add_form = AddCoffeeForm()
-    logging.info("/price")
+    logging.info("/coffee")
     if request.method == 'POST':
         if add_form.validate():
             new_sort = CoffeeSort(name=add_form.name.data,
@@ -88,10 +87,32 @@ def coffee():
 @app.route('/order', methods=['POST'])
 @login_required
 def order():
-    form = OrderRowForm()
-    coffee_id = form.id.data
-    amount = form.amount.data
-    flash("Added to order: {}, {} kg".format(coffee_id, amount), 'success')
+    current_buyin = Buyin.query.filter(Buyin.state == States.OPEN).first()
+    row_form = OrderRowForm()
+    logging.info("Form: coffee = %s, amount = %s", row_form.id.data, row_form.amount.data)
+
+    coffee_type = CoffeeSort.query.get(row_form.id.data)
+    amount = row_form.amount.data
+    logging.info("Current buyin: %s", current_buyin)
+    if current_buyin and row_form.validate():
+        logging.info("Form is valid, processing order: coffee = %s, amount = %s", coffee_type, amount)
+        user_order = IndividualOrder.query.filter(and_(IndividualOrder.user_id == current_user.id,
+                                                       IndividualOrder.buyin_id == current_buyin.id)).first()
+        if not user_order:
+            user_order = IndividualOrder(user=current_user,
+                                         buyin=current_buyin)
+            db.session.add(user_order)
+            db.session.flush()
+            db.session.refresh(user_order)
+            db.session.commit()
+            logging.info("Saving order, id=%s", user_order.id)
+        new_order_row = OrderRow(order=user_order, coffee_type=coffee_type, amount=amount)
+        db.session.add(new_order_row)
+        db.session.commit()
+        flash("Добавлено в заказ: {}, {} kg".format(coffee_type.name, amount), 'success')
+    else:
+        logging.info("Form is invalid, or current buyin is not found! coffee = %s, amount = %s", coffee_type.name, amount)
+        flash("Нет текущей закупки, или некорректный заказ!: {}, {} kg".format(coffee_type.name, amount), 'danger')
     return redirect(url_for('price'))
 
 
@@ -105,3 +126,16 @@ def manage_prices():
         db.session.commit()
     prices = Price.query.order_by(Price.date_to.desc()).all()
     return render_template('manage_prices.html', add_form=add_form, prices=prices)
+
+
+@app.route('/buyin', methods=['GET', 'POST'])
+@roles_required('Босс')
+def buyin():
+    buyin_form = BuyinForm()
+    if request.method == 'POST':
+        new_buyin = Buyin(state=States.OPEN, next_step=buyin_form.next_step.data, created_at=datetime.now())
+        db.session.add(new_buyin)
+        db.session.commit()
+    buyins = Buyin.query.order_by(Buyin.created_at.desc()).all()
+    open_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
+    return render_template('buyins.html', buyin_form=buyin_form, buyins=buyins, current_buyin=open_buyin)

@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from enum import Enum
+
+import sqlalchemy
 from flask_user import UserMixin
 from sqlalchemy.orm import relationship
 
@@ -62,8 +65,55 @@ class CoffeePrice(db.Model):
     coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
     coffee_type = relationship("CoffeeSort", backref="coffee_sorts")
     price_id = db.Column(db.Integer, db.ForeignKey('prices.id', ondelete='CASCADE'), nullable=False)
-    price_ref = relationship("Price", backref="prices")
+    price_ref = relationship(Price, backref="prices")
     price = db.Column(db.Integer())
     price10 = db.Column(db.Integer())
     price25 = db.Column(db.Integer())
     price50 = db.Column(db.Integer())
+    __table_args__ = (db.UniqueConstraint(coffee_type_id, price_id),)
+
+
+class States(Enum):
+    PLANNING = ('Планируется', 'Откроется')
+    OPEN = ('Открыта', 'Сбор денег начнется')
+    FIXED = ('Зафиксирована, сбор денег', 'Заказ отправится')
+    ORDERED = ('Заказ отправлен и оплачен', 'Кофе приедет')
+    FINISHED = ('Закончена', 'Закончена')
+
+
+class Buyin(db.Model):
+    __tablename__ = 'buyins'
+    id = db.Column(db.Integer(), primary_key=True)
+    state = db.Column(sqlalchemy.types.Enum(States))
+    created_at = db.Column(db.DateTime())
+    next_step = db.Column(db.Date())
+
+
+class OfficeOrder(db.Model):
+    __tablename__ = 'office_orders'
+    id = db.Column(db.Integer(), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
+    amount = db.Column(db.Float(), nullable=False)
+    __table_args__ = (db.UniqueConstraint(user_id, buyin_id),)
+
+
+class IndividualOrder(db.Model):
+    __tablename__ = 'individual_orders'
+    id = db.Column(db.Integer(), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user = relationship(User)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
+    buyin = relationship(Buyin)
+    rows = relationship("OrderRow", back_populates="order")
+    __table_args__ = (db.UniqueConstraint(user_id, buyin_id),)
+
+
+class OrderRow(db.Model):
+    __tablename__ = 'order_rows'
+    id = db.Column(db.Integer(), primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('individual_orders.id'))
+    order = relationship("IndividualOrder", back_populates="rows")
+    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
+    coffee_type = relationship(CoffeeSort)
+    amount = db.Column(db.Float())

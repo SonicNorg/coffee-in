@@ -2,7 +2,11 @@
 
 {% block content %}
 <h1>Hi, {{ user.username }}!</h1>
-<h3>Текущая закупка: {{ current_buy }}</h3>
+{% if not current_buyin %}
+    <h3>Текущая закупка отсутствует</h3>
+{% else %}
+    {% include 'fragments/current_buyin.html' %}
+{% endif %}
 <h4>Мой заказ в офис: {{ my_office_order }}</h4>
 <br>
 <h4>Мои заказы себе:</h4>
@@ -12,18 +16,18 @@
     <th>Сорт</th>
     <th>Описание</th>
     <th>Кол-во</th>
-    <th>Цена от 25 кг</th>
-    <th>Цена от 50 кг</th>
+    <th>По 25 кг</th>
+    <th>по 50 кг</th>
     </tr>
     </thead>
     <tbody>
-    {% for coffee in my_own_order %}
+    {% for order_row in my_own_order %}
     <tr>
-        <td>{{ coffee.name }}</td>
-        <td>{{ coffee.description }}</td>
-        <td>{{ coffee.amount }} кг</td>
-        <td>{{ coffee.price25 }} руб.</td>
-        <td>{{ coffee.price50 }} руб.</td>
+        <td>{{ order_row.coffee_type.name }}</td>
+        <td>{{ order_row.coffee_type.description }}</td>
+        <td>{{ order_row.amount }} кг</td>
+        <td>{{ order_row.price25 * order_row.amount }} руб.</td>
+        <td>{{ order_row.price50 * order_row.amount }} руб.</td>
     </tr>
     {% endfor %}
     </tbody>

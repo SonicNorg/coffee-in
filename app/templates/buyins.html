@@ -1,0 +1,39 @@
+{% extends 'flask_user/_authorized_base.html' %}
+
+{% block content %}
+{% if not current_buyin %}
+    <h3>Текущая закупка отсутствует</h3>
+{% else %}
+    {% include 'fragments/current_buyin.html' %}
+{% endif %}
+{% if current_user.has_roles('Босс') %}
+    <h4>Создать новую закупку</h4>
+    <form action="{{ url_for('buyin') }}" method="post">
+        {{ buyin_form.hidden_tag() }}
+        {{ buyin_form.next_step(type='date') }}
+
+        {{ buyin_form.submit() }}
+    </form>
+{% endif %}
+<h2>История закупок</h2>
+<table class="table table-striped table-hover">
+    <thead>
+    <tr>
+        <th>Дата создания</th>
+        <th>Статус</th>
+        <th>Объем</th>
+        <th>Сумма</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for buyin in buyins %}
+    <tr>
+        <td>{{ buyin.created_at }}</td>
+        <td>{{ buyin.state.value[0] }}</td>
+        <td>{{ buyin.amount }} кг</td>
+        <td>{{ buyin.price }} руб.</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
