@@ -10,7 +10,7 @@ from werkzeug.utils import redirect
 
 from app import app, db
 from app.dtos import IndividualOrderWithPrices
-from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm
+from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm
 from app.models import CoffeePrice, CoffeeSort, Price, IndividualOrder, Buyin, States, OrderRow
 from app.util import get_open_price
 
@@ -21,6 +21,7 @@ from app.util import get_open_price
 def index():
     current_buy = {'close_date': '5 марта', 'coffee': 'Бразилия Серрадо',
                    'amount': '26', 'price': '560', 'total': '18 000'}
+    delete_row_form = DeleteOrderRowForm()
     my_office_order = {'my_office_order': '1,6 кг'}
     open_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
     if open_buyin:
@@ -29,7 +30,7 @@ def index():
     else:
         my_own_order = None
     return render_template('index.html', title='Home', user=current_user, current_buyin=open_buyin,
-                           my_office_order=my_office_order,
+                           my_office_order=my_office_order, delete_row_form=delete_row_form,
                            my_own_order=None if not my_own_order else IndividualOrderWithPrices(my_own_order).rows)
 
 
@@ -119,6 +120,21 @@ def order():
                      amount)
         flash("Нет текущей закупки, или некорректный заказ!: {}, {} kg".format(coffee_type.name, amount), 'danger')
     return redirect(url_for('price'))
+
+
+@app.route('/order/delete', methods=['POST'])
+@login_required
+def delete_order_row():
+    delete_row_form = DeleteOrderRowForm()
+    logging.debug("Try to delete row id=%s", delete_row_form.id.data)
+    try:
+        OrderRow.query.filter_by(id=delete_row_form.id.data).delete()
+        db.session.commit()
+        flash('Удалено', 'success')
+    except Exception:
+        logging.exception("Failed to delete order row id=%s", delete_row_form.id.data)
+        flash('Кофе уже удален из заказа', 'danger')
+    return redirect(url_for('index'))
 
 
 @app.route('/price/manage', methods=['GET', 'POST'])

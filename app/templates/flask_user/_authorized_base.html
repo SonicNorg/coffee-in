@@ -2,7 +2,9 @@
 
 {% block menu %}
     <a href="{{ url_for('index') }}">Состояние</a>
-    <a href="{{ url_for('coffee') }}">Кофе</a>
-    <a href="{{ url_for('price') }}">Прайс</a>
-    <a href="{{ url_for('user.logout') }}">Выход</a>
+    <a href="{{ url_for('coffee') }}">Ассортимент кофе</a>
+    <a href="{{ url_for('price') }}">Прайс и заказ</a>
+{% if current_user.has_roles('Босс') %}
+    <a href="{{ url_for('buyin') }}">Закупка</a>
+{% endif %}
 {% endblock %}

@@ -4,7 +4,8 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config(object):
-    SECRET_KEY = os.environ.get('SEC_COFFEE_KEY') or 'you-will-never-guess'
+    SECRET_KEY = os.environ.get('SEC_COFFEE_KEY') or 'you-will-never-guessslkdjflkslkjflkjsdlkjsdf'
+    FLASK_ENV = os.environ.get('FLASK_ENV') or 'production'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'app-test.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False

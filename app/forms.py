@@ -35,3 +35,9 @@ class CreatePriceForm(FlaskForm):
 class BuyinForm(FlaskForm):
     next_step = DateField()
     submit = SubmitField('Создать новую закупку')
+
+
+class DeleteOrderRowForm(FlaskForm):
+    id = IntegerField('id', validators=[DataRequired()])
+    submit = SubmitField('Убрать')
+
