@@ -23,10 +23,14 @@ def index():
                    'amount': '26', 'price': '560', 'total': '18 000'}
     my_office_order = {'my_office_order': '1,6 кг'}
     open_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
-    my_own_order = IndividualOrder.query.filter(and_(IndividualOrder.buyin_id == open_buyin.id,
-                                                     IndividualOrder.user_id == current_user.id)).first()
+    if open_buyin:
+        my_own_order = IndividualOrder.query.filter(and_(IndividualOrder.buyin_id == open_buyin.id,
+                                                         IndividualOrder.user_id == current_user.id)).first()
+    else:
+        my_own_order = None
     return render_template('index.html', title='Home', user=current_user, current_buyin=open_buyin,
-                           my_office_order=my_office_order, my_own_order=IndividualOrderWithPrices(my_own_order).rows)
+                           my_office_order=my_office_order,
+                           my_own_order=None if not my_own_order else IndividualOrderWithPrices(my_own_order).rows)
 
 
 @app.route('/price', methods=["GET", "POST"])
@@ -111,7 +115,8 @@ def order():
         db.session.commit()
         flash("Добавлено в заказ: {}, {} kg".format(coffee_type.name, amount), 'success')
     else:
-        logging.info("Form is invalid, or current buyin is not found! coffee = %s, amount = %s", coffee_type.name, amount)
+        logging.info("Form is invalid, or current buyin is not found! coffee = %s, amount = %s", coffee_type.name,
+                     amount)
         flash("Нет текущей закупки, или некорректный заказ!: {}, {} kg".format(coffee_type.name, amount), 'danger')
     return redirect(url_for('price'))
 

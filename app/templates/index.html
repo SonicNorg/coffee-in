@@ -9,7 +9,7 @@
 {% endif %}
 <h4>Мой заказ в офис: {{ my_office_order }}</h4>
 <br>
-<h4>Мои заказы себе:</h4>
+<h4>Мой заказ домой:</h4>
 <table class="table table-striped table-hover">
     <thead>
     <tr>
@@ -21,15 +21,15 @@
     </tr>
     </thead>
     <tbody>
-    {% for order_row in my_own_order %}
+    {% if not my_own_order %}
     <tr>
-        <td>{{ order_row.coffee_type.name }}</td>
-        <td>{{ order_row.coffee_type.description }}</td>
-        <td>{{ order_row.amount }} кг</td>
-        <td>{{ order_row.price25 * order_row.amount }} руб.</td>
-        <td>{{ order_row.price50 * order_row.amount }} руб.</td>
+        <td colspan="5">В заказе пусто. <a href="{{ url_for('price') }}">Выбрать кофе</a></td>
     </tr>
+    {% else %}
+    {% for order_row in my_own_order %}
+    <tr><td colspan="5"> {{ order_row.__dict__ }}</td></tr>
     {% endfor %}
+    {% endif %}
     </tbody>
 </table>
 {% endblock %}
