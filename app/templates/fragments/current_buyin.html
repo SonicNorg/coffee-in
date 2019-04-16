@@ -11,7 +11,7 @@
             <td>{{ current_buyin.state.value[1] }}:</td><td>{{ current_buyin.next_step }}</td>
         </tr>
         <tr>
-            <td>Текущий объем:</td><td>{{ current_buyin.amount }}</td>
+            <td>Текущий объем:</td><td>{{ current_buyin.orders_total() }}</td>
         </tr>
         <tr>
             <td>Текущая сумма:</td><td>{{ current_buyin.price }}</td>

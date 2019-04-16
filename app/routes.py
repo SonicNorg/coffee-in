@@ -10,7 +10,8 @@ from werkzeug.utils import redirect
 
 from app import app, db
 from app.dtos import IndividualOrderWithPrices
-from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm
+from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm, \
+    ProceedBuyinForm
 from app.models import CoffeePrice, CoffeeSort, Price, IndividualOrder, Buyin, States, OrderRow
 from app.util import get_open_price
 
@@ -31,7 +32,7 @@ def index():
         my_own_order = None
     return render_template('index.html', title='Home', user=current_user, current_buyin=open_buyin,
                            my_office_order=my_office_order, delete_row_form=delete_row_form,
-                           my_own_order=None if not my_own_order else IndividualOrderWithPrices(my_own_order).rows)
+                           my_own_order=None if not my_own_order else IndividualOrderWithPrices(my_own_order))
 
 
 @app.route('/price', methods=["GET", "POST"])
@@ -149,7 +150,7 @@ def manage_prices():
     return render_template('manage_prices.html', add_form=add_form, prices=prices)
 
 
-@app.route('/buyin', methods=['GET', 'POST'])
+@app.route('/buyin/all', methods=['GET', 'POST'])
 @roles_required('Босс')
 def buyin():
     buyin_form = BuyinForm()
@@ -159,4 +160,18 @@ def buyin():
         db.session.commit()
     buyins = Buyin.query.order_by(Buyin.created_at.desc()).all()
     open_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
-    return render_template('buyins.html', buyin_form=buyin_form, buyins=buyins, current_buyin=open_buyin)
+    proceed_buyin_form = ProceedBuyinForm()
+    return render_template('buyins.html', buyin_form=buyin_form, buyins=buyins, current_buyin=open_buyin,
+                           proceed_buyin_form=proceed_buyin_form)
+
+
+@app.route('/buyin/proceed', methods=['POST'])
+@roles_required('Босс')
+def proceed_buyin():
+    current_buyin = Buyin.query.get(ProceedBuyinForm().id.data)
+    if current_buyin.state != States.FINISHED:
+        current_buyin.state = States[current_buyin.state.ordinal() + 1]
+        db.session.add(current_buyin)
+        db.session.commit()
+    return redirect(url_for('buyin'))
+

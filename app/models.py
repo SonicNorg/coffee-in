@@ -74,11 +74,11 @@ class CoffeePrice(db.Model):
 
 
 class States(Enum):
-    PLANNING = ('Планируется', 'Откроется')
-    OPEN = ('Открыта', 'Сбор денег начнется')
-    FIXED = ('Зафиксирована, сбор денег', 'Заказ отправится')
-    ORDERED = ('Заказ отправлен и оплачен', 'Кофе приедет')
-    FINISHED = ('Закончена', 'Закончена')
+    PLANNING = ('Планируется', 'Откроется', 'Открыть')
+    OPEN = ('Открыта', 'Сбор денег начнется', 'Закрыть и начать сбор денег')
+    FIXED = ('Зафиксирована, сбор денег', 'Заказ отправится', 'Оплатить')
+    ORDERED = ('Заказ отправлен и оплачен', 'Кофе приедет', 'Подтвердить получение')
+    FINISHED = ('Закончена', 'Закончена', 'Закупка завершена')
 
 
 class Buyin(db.Model):
@@ -87,6 +87,14 @@ class Buyin(db.Model):
     state = db.Column(sqlalchemy.types.Enum(States))
     created_at = db.Column(db.DateTime())
     next_step = db.Column(db.Date())
+    orders = relationship('IndividualOrder')
+
+    def orders_total(self):
+        total = 0
+        for order in self.orders:
+            for order_row in order.rows:
+                total += order_row.amount
+        return total
 
 
 class OfficeOrder(db.Model):

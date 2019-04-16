@@ -41,3 +41,7 @@ class DeleteOrderRowForm(FlaskForm):
     id = IntegerField('id', validators=[DataRequired()])
     submit = SubmitField('Убрать')
 
+
+class ProceedBuyinForm(FlaskForm):
+    id = IntegerField('id')
+
