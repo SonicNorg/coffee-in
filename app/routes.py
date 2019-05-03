@@ -9,7 +9,7 @@ from sqlalchemy import and_
 from werkzeug.utils import redirect
 
 from app import app, db
-from app.dtos import IndividualOrderWithPrices
+from app.dtos import IndividualOrderWithPrices, enrich_buyin
 from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm, \
     ProceedBuyinForm
 from app.models import CoffeePrice, CoffeeSort, Price, IndividualOrder, Buyin, States, OrderRow
@@ -20,18 +20,16 @@ from app.util import get_open_price
 @app.route('/index')
 @login_required
 def index():
-    current_buy = {'close_date': '5 марта', 'coffee': 'Бразилия Серрадо',
-                   'amount': '26', 'price': '560', 'total': '18 000'}
     delete_row_form = DeleteOrderRowForm()
-    my_office_order = {'my_office_order': '1,6 кг'}
-    open_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
-    if open_buyin:
-        my_own_order = IndividualOrder.query.filter(and_(IndividualOrder.buyin_id == open_buyin.id,
+    current_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
+    if current_buyin:
+        my_own_order = IndividualOrder.query.filter(and_(IndividualOrder.buyin_id == current_buyin.id,
                                                          IndividualOrder.user_id == current_user.id)).first()
+        enrich_buyin(current_buyin)
     else:
         my_own_order = None
-    return render_template('index.html', title='Home', user=current_user, current_buyin=open_buyin,
-                           my_office_order=my_office_order, delete_row_form=delete_row_form,
+    return render_template('index.html', title='Home', user=current_user, current_buyin=current_buyin,
+                           delete_row_form=delete_row_form,
                            my_own_order=None if not my_own_order else IndividualOrderWithPrices(my_own_order))
 
 
@@ -159,9 +157,10 @@ def buyin():
         db.session.add(new_buyin)
         db.session.commit()
     buyins = Buyin.query.order_by(Buyin.created_at.desc()).all()
-    open_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
+    current_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
+    enrich_buyin(current_buyin)
     proceed_buyin_form = ProceedBuyinForm()
-    return render_template('buyins.html', buyin_form=buyin_form, buyins=buyins, current_buyin=open_buyin,
+    return render_template('buyins.html', buyin_form=buyin_form, buyins=buyins, current_buyin=current_buyin,
                            proceed_buyin_form=proceed_buyin_form)
 
 

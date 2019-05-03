@@ -88,22 +88,37 @@ class Buyin(db.Model):
     created_at = db.Column(db.DateTime())
     next_step = db.Column(db.Date())
     orders = relationship('IndividualOrder')
+    office_orders = relationship('OfficeOrder')
 
     def orders_total(self):
         total = 0
         for order in self.orders:
             for order_row in order.rows:
                 total += order_row.amount
+
+        for office_order in self.office_orders:
+            for office_order_row in office_order.rows:
+                total += office_order_row.amount
+
         return total
 
+    def price(self):
+        total_weight = self.orders_total()
+        cost = 0
+        for order in self.orders:
+            from app.dtos import IndividualOrderWithPrices
+            order_with_prices = IndividualOrderWithPrices(order)
+            for order_row in order_with_prices.rows:
+                cost += order_row[0].amount * (order_row[1].price25 if total_weight < 50 else order_row[1].price50)
 
-class OfficeOrder(db.Model):
-    __tablename__ = 'office_orders'
-    id = db.Column(db.Integer(), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
-    amount = db.Column(db.Float(), nullable=False)
-    __table_args__ = (db.UniqueConstraint(user_id, buyin_id),)
+        for office_order in self.office_orders:
+            from app.dtos import OfficeOrderWithPrices
+            office_order_with_prices = OfficeOrderWithPrices(office_order)
+            for office_order_row in office_order_with_prices.rows:
+                cost += office_order_row[0].amount * \
+                        (office_order_row[1].price25 if total_weight < 50 else office_order_row[1].price50)
+
+        return cost
 
 
 class IndividualOrder(db.Model):
@@ -113,7 +128,7 @@ class IndividualOrder(db.Model):
     user = relationship(User)
     buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
     buyin = relationship(Buyin)
-    rows = relationship("OrderRow", back_populates="order")
+    rows = relationship('OrderRow', back_populates='order')
     __table_args__ = (db.UniqueConstraint(user_id, buyin_id),)
 
 
@@ -121,7 +136,28 @@ class OrderRow(db.Model):
     __tablename__ = 'order_rows'
     id = db.Column(db.Integer(), primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('individual_orders.id'))
-    order = relationship("IndividualOrder", back_populates="rows")
+    order = relationship('IndividualOrder', back_populates='rows')
     coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
     coffee_type = relationship(CoffeeSort)
+    amount = db.Column(db.Float())
+
+
+class OfficeOrder(db.Model):
+    __tablename__ = 'office_orders'
+    id = db.Column(db.Integer(), primary_key=True)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False, unique=True)
+    buyin = relationship(Buyin)
+    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
+    coffee_type = relationship(CoffeeSort)
+    rows = relationship('OfficeOrderRow', back_populates='order')
+    __table_args__ = (db.UniqueConstraint(buyin_id, coffee_type_id),)
+
+
+class OfficeOrderRow(db.Model):
+    __tablename__ = 'office_rows'
+    id = db.Column(db.Integer(), primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('office_orders.id', ondelete='CASCADE'), nullable=False)
+    order = relationship(OfficeOrder, back_populates="rows")
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user = relationship(User)
     amount = db.Column(db.Float())

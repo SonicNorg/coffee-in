@@ -2,18 +2,13 @@
 
 {% block content %}
 <h1>Hi, {{ user.username }}!</h1>
-{% if not current_buyin %}
-    <h3>Текущая закупка отсутствует</h3>
-{% else %}
-    {% include 'fragments/current_buyin.html' %}
-{% endif %}
-<h4>Мой заказ в офис: {{ my_office_order }}</h4>
+{% include 'fragments/current_buyin.html' %}
 <br>
-<h4>Мой заказ домой:
+<h3>Мой заказ домой:
     {% if my_own_order and my_own_order.rows %}
     {{ my_own_order.total50 }} - {{ my_own_order.total25 }} руб.
     {% endif %}
-</h4>
+</h3>
 <table class="table table-striped table-hover">
     <thead>
     <tr>

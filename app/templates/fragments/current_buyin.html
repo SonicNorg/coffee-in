@@ -1,3 +1,6 @@
+{% if not current_buyin %}
+    <h3>Текущая закупка отсутствует</h3>
+{% else %}
 <div>
     <h2>Текущая закупка</h2>
     <table>
@@ -14,7 +17,26 @@
             <td>Текущий объем:</td><td>{{ current_buyin.orders_total() }}</td>
         </tr>
         <tr>
-            <td>Текущая сумма:</td><td>{{ current_buyin.price }}</td>
+            <td>Текущая сумма:</td><td>{{ current_buyin.price() }}</td>
         </tr>
     </table>
+    <h3>В офис заказываем следующие сорта:</h3>
+    <table class="table table-striped table-hover">
+        <thead>
+            <th>Кофе</th>
+            <th>Описание</th>
+        </thead>
+        <tbody>
+            {% if not current_buyin.office_orders %}
+            <tr><td colspan="2">Администратор закупки пока ничего не выбрал.</td></tr>
+            {% endif %}
+            {% for office_order in current_buyin.office_orders %}
+            <tr>
+                <td>office_order.coffee_type.name</td>
+                <td>office_order.coffee_type.description</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% endif %}
