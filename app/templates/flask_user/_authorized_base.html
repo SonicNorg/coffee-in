@@ -2,19 +2,21 @@
 
 {% block menu %}
 <nav class="navbar navbar-default">
-    <div class="btn-group" role="group">
-        <a href="{{ url_for('news') }}" class="btn btn-default navbar-btn">Новости <span class="badge">{{ unread_count }}</span></a>
-        <a href="{{ url_for('status') }}" class="btn btn-default navbar-btn">Статус закупки</a>
-        <a href="{{ url_for('price') }}" class="btn btn-default navbar-btn"><b>Заказать</b></a>
-        <a href="{{ url_for('coffee') }}" class="btn btn-default navbar-btn">Ассортимент кофе</a>
+    <div class="container-fluid">
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('news') }}" class="btn btn-default navbar-btn">Новости <span class="badge">{{ unread_count }}</span></a>
+            <a href="{{ url_for('status') }}" class="btn btn-default navbar-btn">Статус закупки</a>
+            <a href="{{ url_for('price') }}" class="btn btn-default navbar-btn"><b>Заказать</b></a>
+            <a href="{{ url_for('coffee') }}" class="btn btn-default navbar-btn">Ассортимент кофе</a>
+        </div>
+        <p class="navbar-text navbar-right">Мы рады Вас видеть, {{ current_user.first_name + ' ' + current_user.last_name }}</p>
+    {% if current_user.has_roles('Босс') %}
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('buyin') }}" class="btn btn-default navbar-btn">Закупка</a>
+            <a href="{{ url_for('buyin_by_users') }}" class="btn btn-default navbar-btn">По пользователям</a>
+            <a href="{{ url_for('buyin_by_sorts') }}" class="btn btn-default navbar-btn">По сортам</a>
+        </div>
+    {% endif %}
     </div>
-    <p class="navbar-text navbar-right">Мы рады Вас видеть, {{ current_user.first_name + ' ' + current_user.last_name }}</p>
-{% if current_user.has_roles('Босс') %}
-    <div class="btn-group" role="group">
-        <a href="{{ url_for('buyin') }}" class="btn btn-default navbar-btn">Закупка</a>
-        <a href="{{ url_for('buyin_by_users') }}" class="btn btn-default navbar-btn">По пользователям</a>
-        <a href="{{ url_for('buyin_by_sorts') }}" class="btn btn-default navbar-btn">По сортам</a>
-    </div>
-{% endif %}
 </nav>
 {% endblock %}

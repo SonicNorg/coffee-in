@@ -1,0 +1,22 @@
+ #main-div {
+     background-image: url('background.jpg');
+     background-repeat: no-repeat;
+     background-attachment: scroll;
+     background-position: center;
+ }
+
+ .navbar {
+    background: linear-gradient(to top, #cfaf7a 5%, #532815 100%);
+ }
+
+ .navbar-text {
+    color: #ffffff !important;
+ }
+
+ #header-div {
+    background: #532815;
+ }
+
+ #logo {
+    padding: 5px
+ }

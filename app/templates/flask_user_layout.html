@@ -24,6 +24,7 @@
       <script src="//cdnjs.cloudflare.com/ajax/libs/respond.js/1.4.2/respond.js"></script>
     <![endif]-->
 
+    <link rel = "stylesheet" type = "text/css" href = "{{ url_for('static', filename='style.css') }}" />
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
     {# *** Allow sub-templates to insert extra html to the head section *** #}
     {% block extra_css %}{% endblock %}
@@ -33,10 +34,10 @@
 <body>
     {% block body %}
     <div id="header-div" class="clearfix with-margins">
-        <div class="pull-left"><a href="/"><h1 class="no-margins">
-            <img src="{{ url_for('static', filename='favicon.png') }}" width="40em" height="40em">
+        <div class="pull-left"><a href="/">
+            <img id="logo" src="{{ url_for('static', filename='logo_on_white.png') }}" width="40em" height="40em" >
             {{ user_manager.USER_APP_NAME }}
-        </h1></a></div>
+        </a></div>
         <div class="pull-right">
             {% if call_or_get(current_user.is_authenticated) %}
                 <a href="{{ url_for('user.edit_user_profile') }}">{{ current_user.username or current_user.email }}</a>
