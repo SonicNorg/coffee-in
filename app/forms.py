@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 from flask_wtf import FlaskForm
 from wtforms import FloatField, SubmitField, IntegerField, SelectField, StringField, DateField
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, NumberRange
 
 
 class OrderRowForm(FlaskForm):
     id = IntegerField('id', validators=[DataRequired()])
-    amount = FloatField('amount', validators=[DataRequired()])
-    submit = SubmitField('+')
+    amount = FloatField('amount', validators=[DataRequired(), NumberRange(min=0)])
+    submit = SubmitField('Беру')
 
 
 class AddToPriceForm(FlaskForm):
@@ -33,7 +33,7 @@ class CreatePriceForm(FlaskForm):
 
 
 class BuyinForm(FlaskForm):
-    next_step = DateField()
+    next_step = DateField('Дата закрытия:')
     submit = SubmitField('Создать новую закупку')
 
 
@@ -45,3 +45,12 @@ class DeleteOrderRowForm(FlaskForm):
 class ProceedBuyinForm(FlaskForm):
     id = IntegerField('id')
 
+
+class AddOfficeOrderForm(FlaskForm):
+    id = IntegerField('id', validators=[DataRequired()])
+    submit = SubmitField('В офис')
+
+
+class AddCupsToOfficeForm(FlaskForm):
+    number = FloatField('Я пью чашек в день:', validators=[NumberRange(min=0)])
+    submit = SubmitField('Сохранить')

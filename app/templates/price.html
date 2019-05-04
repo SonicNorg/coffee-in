@@ -26,11 +26,21 @@
             <td>{{ coffee.coffee_type.description }}</td>
             <td>{{ coffee.price25 }} руб.</td>
             <td>{{ coffee.price50 }} руб.</td>
+            <td>
             <form action="{{ url_for('order') }}" method="post">
                 {{ form.hidden_tag() }}
                 {{ form.id(hidden='hidden', value=coffee.coffee_type.id) }}
-                <td>{{ form.amount(style='width: 60px', type='number', step=0.5) }}{{ form.submit() }}</td>
+                {{ form.amount(style='width: 60px', type='number', step=0.5, min=0) }}
+                {{ form.submit() }}
             </form>
+            {% if current_user.has_roles('Босс') %}
+            <form action="{{ url_for('office_order') }}" method="post">
+                {{ add_office_form.hidden_tag() }}
+                {{ add_office_form.id(hidden='hidden', value=coffee.coffee_type.id) }}
+                <td>{{ add_office_form.submit() }}</td>
+            </form>
+            {% endif %}
+            </td>
         </tr>
         {% endfor %}
         </tbody>

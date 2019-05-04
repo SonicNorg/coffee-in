@@ -1,12 +1,27 @@
 {% extends "flask_user/_authorized_base.html" %}
 
 {% block content %}
-<h1>Hi, {{ user.username }}!</h1>
 {% include 'fragments/current_buyin.html' %}
+<h2>Мой заказ: {{ current_buyin.costs_per_user(current_user.id)[2] }} руб.</h2>
 <br>
+    <table class="table">
+        <tbody>
+            <tr>
+                <td>{{ set_cups_form.number.label }}</td>
+                <td>
+                    <form action="{{ url_for('my_cups') }}" method="post">
+                        {{ set_cups_form.hidden_tag() }}
+                        {{ set_cups_form.number(type='number', step=0.5, class='inline', min=0) }}
+                        {{ set_cups_form.submit(class='inline') }}
+                    </form>
+                </td>
+                <td colspan="2"><h4>На {{ current_buyin.days }} дней это {{ current_buyin.costs_per_user(current_user.id)[0] }} руб.</h4></td>
+            </tr>
+        </tbody>
+    </table>
 <h3>Мой заказ домой:
-    {% if my_own_order and my_own_order.rows %}
-    {{ my_own_order.total50 }} - {{ my_own_order.total25 }} руб.
+    {% if current_buyin.costs_per_user(current_user.id)[1] > 0 %}
+    {{ current_buyin.costs_per_user(current_user.id)[1] }} руб.
     {% endif %}
 </h3>
 <table class="table table-striped table-hover">
@@ -20,21 +35,21 @@
     </tr>
     </thead>
     <tbody>
-    {% if not my_own_order or not my_own_order.rows %}
+    {% if not my_own_order %}
     <tr>
         <td colspan="5">В заказе пусто. <a href="{{ url_for('price') }}">Выбрать кофе</a></td>
     </tr>
     {% else %}
-    {% for order_row in my_own_order.rows %}
+    {% for order_row, coffee_price in my_own_order %}
     <form action="{{ url_for('delete_order_row') }}" method="post">
         {{ delete_row_form.hidden_tag() }}
-        {{ delete_row_form.id(hidden='hidden', value=order_row[0].id) }}
+        {{ delete_row_form.id(hidden='hidden', value=order_row.id) }}
         <tr>
-            <td>{{ order_row[0].coffee_type.name }}</td>
-            <td>{{ order_row[0].coffee_type.description }}</td>
-            <td>{{ order_row[0].amount }} кг</td>
-            <td>{{ order_row[1].price25 * order_row[0].amount }} руб.</td>
-            <td>{{ order_row[1].price50 * order_row[0].amount }} руб.</td>
+            <td>{{ order_row.coffee_type.name }}</td>
+            <td>{{ order_row.coffee_type.description }}</td>
+            <td>{{ order_row.amount }} кг</td>
+            <td>{{ coffee_price.price25 * order_row.amount }} руб.</td>
+            <td>{{ coffee_price.price50 * order_row.amount }} руб.</td>
             <td>{{ delete_row_form.submit() }}</td>
         </tr>
     </form>

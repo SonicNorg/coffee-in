@@ -3,7 +3,8 @@ from enum import Enum
 
 import sqlalchemy
 from flask_user import UserMixin
-from sqlalchemy.orm import relationship
+from sqlalchemy import and_, func
+from sqlalchemy.orm import relationship, join
 
 from app import db
 
@@ -87,77 +88,143 @@ class Buyin(db.Model):
     state = db.Column(sqlalchemy.types.Enum(States))
     created_at = db.Column(db.DateTime())
     next_step = db.Column(db.Date())
-    orders = relationship('IndividualOrder')
+    days = db.Column(db.Integer(), nullable=False, default=25)
+    shipment_price = db.Column(db.Integer(), nullable=False, default=900)
+    order_rows = relationship('OrderRow', back_populates='buyin')
     office_orders = relationship('OfficeOrder')
+    office_order_rows = relationship('OfficeOrderRow', back_populates='buyin')
 
-    def orders_total(self):
+    def orders_total(self, user_id=None):
+        return self.office_total(user_id) + self.individual_total(user_id)
+
+    def individual_total(self, user_id=None):
         total = 0
-        for order in self.orders:
-            for order_row in order.rows:
+        for order_row in self.order_rows:
+            if not user_id or order_row.user_id == user_id:
                 total += order_row.amount
-
-        for office_order in self.office_orders:
-            for office_order_row in office_order.rows:
-                total += office_order_row.amount
-
         return total
 
-    def price(self):
+    def office_total(self, user_id=None):
+        total = 0
+        for office_order_row in self.office_order_rows:
+            if not user_id or office_order_row.user_id == user_id:
+                total += (office_order_row.cups_per_day * self.days * 0.008)
+        return total
+
+    def total_cost_without_shipment(self):
+        total_weight = self.orders_total()
+        of_total = self.office_total()
+        each_sort_weight = of_total / len(self.office_orders) if self.office_orders else 0
+        cost = 0
+        for order_row, coffee_price in self.individual_rows_with_prices():
+            cost += order_row.amount * (coffee_price.price25 if total_weight < 50 else coffee_price.price50)
+
+        for office_order, coffee_price in self.office_coffee_prices():
+            cost += (each_sort_weight * (coffee_price.price25 if total_weight < 50
+                                         else coffee_price.price50))
+        return cost
+
+    def office_cost(self):
+        total_weight = self.orders_total()
+        of_total = self.office_total()
+        each_sort_weight = of_total / len(self.office_orders) if self.office_orders else 0
+        cost = 0
+        for office_order, coffee_price in self.office_coffee_prices():
+            cost += (each_sort_weight * (coffee_price.price25 if total_weight < 50
+                                         else coffee_price.price50))
+        return cost
+
+    def individual_cost(self, user_id=None):
         total_weight = self.orders_total()
         cost = 0
-        for order in self.orders:
-            from app.dtos import IndividualOrderWithPrices
-            order_with_prices = IndividualOrderWithPrices(order)
-            for order_row in order_with_prices.rows:
-                cost += order_row[0].amount * (order_row[1].price25 if total_weight < 50 else order_row[1].price50)
-
-        for office_order in self.office_orders:
-            from app.dtos import OfficeOrderWithPrices
-            office_order_with_prices = OfficeOrderWithPrices(office_order)
-            for office_order_row in office_order_with_prices.rows:
-                cost += office_order_row[0].amount * \
-                        (office_order_row[1].price25 if total_weight < 50 else office_order_row[1].price50)
+        for order_row, coffee_price in self.individual_rows_with_prices():
+            if not user_id or order_row.user_id == user_id:
+                cost += order_row.amount * (coffee_price.price25 if total_weight < 50 else coffee_price.price50)
 
         return cost
 
+    def office_coffee_prices(self):
+        from app.util import get_open_price
+        cur_price = get_open_price()
+        rows = []
+        if cur_price:
+            rows = db.session.query(OfficeOrder, CoffeePrice).select_from(
+                join(OfficeOrder, CoffeePrice,
+                     and_(OfficeOrder.coffee_type_id == CoffeePrice.coffee_type_id,
+                          CoffeePrice.price_id == cur_price.id))
+            ).filter(OfficeOrder.buyin_id == self.id).order_by(OfficeOrder.id).all()
+        return rows
 
-class IndividualOrder(db.Model):
-    __tablename__ = 'individual_orders'
-    id = db.Column(db.Integer(), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    user = relationship(User)
-    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
-    buyin = relationship(Buyin)
-    rows = relationship('OrderRow', back_populates='order')
-    __table_args__ = (db.UniqueConstraint(user_id, buyin_id),)
+    def individual_rows_with_prices(self, user_id=None):
+        from app.util import get_open_price
+        cur_price = get_open_price()
+        rows = []
+        if cur_price:
+            query = db.session.query(OrderRow, CoffeePrice).select_from(
+                join(OrderRow, CoffeePrice,
+                     and_(OrderRow.coffee_type_id == CoffeePrice.coffee_type_id,
+                          CoffeePrice.price_id == cur_price.id))
+            ).filter(OrderRow.buyin_id == self.id).order_by(OrderRow.id)
+            rows = query.filter(OrderRow.user_id == user_id).all() if user_id else query.all()
+        return rows
+
+    def total_cups_per_day(self):
+        query = db.session.query(
+            func.sum(OfficeOrderRow.cups_per_day).label('cups_per_day')
+        ).filter(OfficeOrderRow.buyin_id == self.id)
+        return query.first().cups_per_day
+
+    def costs_per_user(self, user_id):
+        of_cost = self.office_cost()
+        total_cups = self.total_cups_per_day()
+        cups = OfficeOrderRow.query.filter(
+            and_(OfficeOrderRow.buyin_id == self.id, OfficeOrderRow.user_id == user_id)).first().cups_per_day
+        office_cost = (of_cost / total_cups * cups) if total_cups > 0 else 0
+
+        total_cost = self.individual_cost(user_id) + office_cost + \
+                    (self.shipment_price / self.orders_total() * self.orders_total(user_id)
+                      if self.orders_total() > 0 else 0)
+        return office_cost, self.individual_cost(user_id), total_cost
+
+    def amounts_per_user(self, user_id):
+        individual_amount = 0
+        office_amount = 0
+        total_amount = 0
+
+        # for order_row, coffee_price in self.individual_rows_with_prices():
+        #     individual_cost += (order_row.amount *
+        #                         (coffee_price.price25 if self.orders_total() < 50 else coffee_price.price50))
 
 
 class OrderRow(db.Model):
     __tablename__ = 'order_rows'
     id = db.Column(db.Integer(), primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('individual_orders.id'))
-    order = relationship('IndividualOrder', back_populates='rows')
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
+    buyin = relationship(Buyin, back_populates='order_rows')
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user = relationship(User)
     coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
     coffee_type = relationship(CoffeeSort)
     amount = db.Column(db.Float())
+    __table_args__ = (db.UniqueConstraint(buyin_id, user_id, coffee_type_id),)
 
 
 class OfficeOrder(db.Model):
     __tablename__ = 'office_orders'
     id = db.Column(db.Integer(), primary_key=True)
-    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False, unique=True)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
     buyin = relationship(Buyin)
     coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
     coffee_type = relationship(CoffeeSort)
-    rows = relationship('OfficeOrderRow', back_populates='order')
     __table_args__ = (db.UniqueConstraint(buyin_id, coffee_type_id),)
 
 
 class OfficeOrderRow(db.Model):
     __tablename__ = 'office_rows'
     id = db.Column(db.Integer(), primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('office_orders.id', ondelete='CASCADE'), nullable=False)
-    order = relationship(OfficeOrder, back_populates="rows")
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
+    buyin = relationship(Buyin, back_populates='office_order_rows')
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user = relationship(User)
-    amount = db.Column(db.Float())
+    cups_per_day = db.Column(db.Float())
+    __table_args__ = (db.UniqueConstraint(buyin_id, user_id),)

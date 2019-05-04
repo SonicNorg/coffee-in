@@ -14,7 +14,7 @@ class CertainDomains(object):
         self.domains = domains
 
     def __call__(self, form, field):
-        success = False
+        success = not self.domains
         for domain in self.domains:
             success = success or field.data.endswith(domain)
         if not success:

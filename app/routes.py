@@ -9,11 +9,11 @@ from sqlalchemy import and_
 from werkzeug.utils import redirect
 
 from app import app, db
-from app.dtos import IndividualOrderWithPrices, enrich_buyin
 from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm, \
-    ProceedBuyinForm
-from app.models import CoffeePrice, CoffeeSort, Price, IndividualOrder, Buyin, States, OrderRow
-from app.util import get_open_price
+    ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm
+from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
+    OfficeOrderRow
+from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin
 
 
 @app.route('/')
@@ -21,22 +21,24 @@ from app.util import get_open_price
 @login_required
 def index():
     delete_row_form = DeleteOrderRowForm()
-    current_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
+    current_buyin = get_current_buyin()
     if current_buyin:
-        my_own_order = IndividualOrder.query.filter(and_(IndividualOrder.buyin_id == current_buyin.id,
-                                                         IndividualOrder.user_id == current_user.id)).first()
-        enrich_buyin(current_buyin)
+        rows = current_buyin.individual_rows_with_prices(current_user.id)
     else:
-        my_own_order = None
-    return render_template('index.html', title='Home', user=current_user, current_buyin=current_buyin,
-                           delete_row_form=delete_row_form,
-                           my_own_order=None if not my_own_order else IndividualOrderWithPrices(my_own_order))
+        rows = []
+    set_cups_form = AddCupsToOfficeForm()
+    set_cups_form.number.data = get_cups_for_current_user(current_buyin)
+    return render_template('index.html', title='Home', user=current_user,
+                           current_buyin=current_buyin, delete_row_form=delete_row_form,
+                           set_cups_form=set_cups_form,
+                           my_own_order=rows)
 
 
 @app.route('/price', methods=["GET", "POST"])
 @login_required
 def price():
     current_price = get_open_price()
+    add_office_form = AddOfficeOrderForm()
     if current_price:
         add_form = AddToPriceForm()
         coffee_type_id = add_form.coffee.data
@@ -53,7 +55,7 @@ def price():
                 for fieldName, errorMessages in add_form.errors.items():
                     for err in errorMessages:
                         logging.error("Error in %s: %s", fieldName, err)
-                flash('Invalid data', 'error')
+                        flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
         coffee_sorts = CoffeeSort.query.with_entities(CoffeeSort.id, CoffeeSort.name).all()
         add_form.set_choices(coffee_sorts)
         coffee_with_prices = CoffeePrice.query.filter(CoffeePrice.price_id == current_price.id).all()
@@ -65,7 +67,7 @@ def price():
     form = OrderRowForm()
     return render_template('price.html', coffee_with_prices=coffee_with_prices,
                            date_to=current_price.date_to if current_price else None,
-                           form=form, add_form=add_form)
+                           form=form, add_form=add_form, add_office_form=add_office_form)
 
 
 @app.route('/coffee', methods=["GET", "POST"])
@@ -83,15 +85,30 @@ def coffee():
             for fieldName, errorMessages in add_form.errors.items():
                 for err in errorMessages:
                     logging.error("Error in %s: %s", fieldName, err)
-            flash('Invalid data', 'error')
+                    flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
     coffee_sorts = CoffeeSort.query.all()
     return render_template('coffee.html', coffee_sorts=coffee_sorts, add_form=add_form)
+
+
+@app.route('/officeorder', methods=['POST'])
+@roles_required('Босс')
+def office_order():
+    current_buyin = get_open_buyin()
+    add_form = AddOfficeOrderForm()
+    coffee_type = CoffeeSort.query.get(add_form.id.data)
+    logging.info("Current buyin: %s, coffee_type: %s", current_buyin, coffee_type)
+    if current_buyin:
+        of_order = OfficeOrder(buyin=current_buyin, coffee_type_id=coffee_type.id)
+        db.session.add(of_order)
+        db.session.commit()
+        flash("Добавлено к офисному заказу: {}".format(of_order.coffee_type.name), 'success')
+    return redirect(url_for('price'))
 
 
 @app.route('/order', methods=['POST'])
 @login_required
 def order():
-    current_buyin = Buyin.query.filter(Buyin.state == States.OPEN).first()
+    current_buyin = get_open_buyin()
     row_form = OrderRowForm()
     logging.info("Form: coffee = %s, amount = %s", row_form.id.data, row_form.amount.data)
 
@@ -100,18 +117,14 @@ def order():
     logging.info("Current buyin: %s", current_buyin)
     if current_buyin and row_form.validate():
         logging.info("Form is valid, processing order: coffee = %s, amount = %s", coffee_type, amount)
-        user_order = IndividualOrder.query.filter(and_(IndividualOrder.user_id == current_user.id,
-                                                       IndividualOrder.buyin_id == current_buyin.id)).first()
-        if not user_order:
-            user_order = IndividualOrder(user=current_user,
-                                         buyin=current_buyin)
-            db.session.add(user_order)
-            db.session.flush()
-            db.session.refresh(user_order)
-            db.session.commit()
-            logging.info("Saving order, id=%s", user_order.id)
-        new_order_row = OrderRow(order=user_order, coffee_type=coffee_type, amount=amount)
-        db.session.add(new_order_row)
+        order_row = OrderRow.query.filter(and_(OrderRow.user_id == current_user.id,
+                                               OrderRow.buyin_id == current_buyin.id,
+                                               OrderRow.coffee_type_id == coffee_type.id)).first()
+        if order_row:
+            order_row.amount = amount
+        else:
+            order_row = OrderRow(user=current_user, buyin=current_buyin, coffee_type=coffee_type, amount=amount)
+        db.session.add(order_row)
         db.session.commit()
         flash("Добавлено в заказ: {}, {} kg".format(coffee_type.name, amount), 'success')
     else:
@@ -126,6 +139,10 @@ def order():
 def delete_order_row():
     delete_row_form = DeleteOrderRowForm()
     logging.debug("Try to delete row id=%s", delete_row_form.id.data)
+    current_buyin = get_open_buyin()
+    if current_buyin.state != States.OPEN:
+        flash('Закупка закрыта, заказ изменить нельзя!', 'danger')
+        return redirect(url_for('index'))
     try:
         OrderRow.query.filter_by(id=delete_row_form.id.data).delete()
         db.session.commit()
@@ -144,6 +161,11 @@ def manage_prices():
         new_price = Price(date_from=add_form.date_from.data, date_to=add_form.date_to.data)
         db.session.add(new_price)
         db.session.commit()
+    else:
+        for fieldName, errorMessages in add_form.errors.items():
+            for err in errorMessages:
+                logging.error("Error in %s: %s", fieldName, err)
+                flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
     prices = Price.query.order_by(Price.date_to.desc()).all()
     return render_template('manage_prices.html', add_form=add_form, prices=prices)
 
@@ -157,10 +179,13 @@ def buyin():
         db.session.add(new_buyin)
         db.session.commit()
     buyins = Buyin.query.order_by(Buyin.created_at.desc()).all()
-    current_buyin = Buyin.query.filter(Buyin.state == States.OPEN).order_by(Buyin.created_at.desc()).first()
-    enrich_buyin(current_buyin)
+    current_buyin = get_open_buyin()
+    logging.info('Current buyin = %s', current_buyin)
     proceed_buyin_form = ProceedBuyinForm()
+    set_cups_form = AddCupsToOfficeForm()
+    set_cups_form.number.data = get_cups_for_current_user(current_buyin)
     return render_template('buyins.html', buyin_form=buyin_form, buyins=buyins, current_buyin=current_buyin,
+                           set_cups_form=set_cups_form,
                            proceed_buyin_form=proceed_buyin_form)
 
 
@@ -174,3 +199,37 @@ def proceed_buyin():
         db.session.commit()
     return redirect(url_for('buyin'))
 
+
+@app.route('/officeorder/my', methods=['POST'])
+@login_required
+def my_cups():
+    current_buyin = get_open_buyin()
+    if current_buyin.state != States.OPEN:
+        flash('Закупка закрыта, заказ изменить нельзя!', 'danger')
+        return redirect(url_for('index'))
+    set_cups_form = AddCupsToOfficeForm()
+    cups_number = set_cups_form.number.data
+    logging.info('Trying to set %s cups for user %s', cups_number, current_user)
+    if set_cups_form.validate():
+        try:
+            office_order_row = OfficeOrderRow.query.filter(and_(
+                OfficeOrderRow.buyin_id == current_buyin.id,
+                OfficeOrderRow.user_id == current_user.id
+            )).first()
+            if not office_order_row:
+                office_order_row = OfficeOrderRow(buyin=current_buyin, user=current_user, cups_per_day=cups_number)
+            else:
+                office_order_row.cups_per_day = cups_number
+            logging.info('Setting cups, user=%s, buyin=%s, cups=%s', current_user, current_buyin, cups_number)
+            db.session.add(office_order_row)
+            db.session.commit()
+            flash('Ваша дневная офисная норма изменена на {} чашек'.format(cups_number), 'success')
+        except Exception:
+            logging.exception("Failed to set %s cups, user = %s", cups_number, current_user)
+            flash('Ошибка при изменении заказа.', 'danger')
+    else:
+        for fieldName, errorMessages in set_cups_form.errors.items():
+            for err in errorMessages:
+                logging.error("Error in %s: %s", fieldName, err)
+                flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
+    return redirect(url_for('index'))

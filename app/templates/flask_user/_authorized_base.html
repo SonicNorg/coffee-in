@@ -1,10 +1,13 @@
 {% extends 'flask_user/_common_base.html' %}
 
 {% block menu %}
-    <a href="{{ url_for('index') }}">Состояние</a>
-    <a href="{{ url_for('coffee') }}">Ассортимент кофе</a>
-    <a href="{{ url_for('price') }}">Прайс и заказ</a>
+<nav class="navbar navbar-default">
+    <a href="{{ url_for('price') }}" class="btn btn-default navbar-btn"><b>Заказать</b></a>
+    <a href="{{ url_for('index') }}" class="btn btn-default navbar-btn">Статус закупки</a>
+    <a href="{{ url_for('coffee') }}" class="btn btn-default navbar-btn">Ассортимент кофе</a>
 {% if current_user.has_roles('Босс') %}
-    <a href="{{ url_for('buyin') }}">Закупка</a>
+    <a href="{{ url_for('buyin') }}" class="btn btn-default navbar-btn">Закупка</a>
+    <p class="navbar-text navbar-right">Мы рады Вас видеть, {{ current_user.first_name + ' ' + current_user.last_name }}</p>
 {% endif %}
+</nav>
 {% endblock %}
