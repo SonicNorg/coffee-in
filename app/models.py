@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from enum import Enum
 
 import sqlalchemy
@@ -63,12 +64,11 @@ class Price(db.Model):
 class CoffeePrice(db.Model):
     __tablename__ = 'coffee_prices'
     id = db.Column(db.Integer(), primary_key=True)
-    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
+    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False,
+                               index=True)
     coffee_type = relationship("CoffeeSort", backref="coffee_sorts")
     price_id = db.Column(db.Integer, db.ForeignKey('prices.id', ondelete='CASCADE'), nullable=False)
     price_ref = relationship(Price, backref="prices")
-    price = db.Column(db.Integer())
-    price10 = db.Column(db.Integer())
     price25 = db.Column(db.Integer())
     price50 = db.Column(db.Integer())
     __table_args__ = (db.UniqueConstraint(coffee_type_id, price_id),)
@@ -85,7 +85,7 @@ class States(Enum):
 class Buyin(db.Model):
     __tablename__ = 'buyins'
     id = db.Column(db.Integer(), primary_key=True)
-    state = db.Column(sqlalchemy.types.Enum(States))
+    state = db.Column(sqlalchemy.types.Enum(States), index=True)
     created_at = db.Column(db.DateTime())
     next_step = db.Column(db.Date())
     days = db.Column(db.Integer(), nullable=False, default=25)
@@ -177,33 +177,26 @@ class Buyin(db.Model):
     def costs_per_user(self, user_id):
         of_cost = self.office_cost()
         total_cups = self.total_cups_per_day()
-        cups = OfficeOrderRow.query.filter(
-            and_(OfficeOrderRow.buyin_id == self.id, OfficeOrderRow.user_id == user_id)).first().cups_per_day
-        office_cost = (of_cost / total_cups * cups) if total_cups > 0 else 0
+        user_office_order_rows = OfficeOrderRow.query.filter(
+            and_(OfficeOrderRow.buyin_id == self.id, OfficeOrderRow.user_id == user_id)).first()
+        user_cups = user_office_order_rows.cups_per_day if user_office_order_rows else 0
+        office_cost = (of_cost / total_cups * user_cups) if total_cups and total_cups > 0 else 0
 
         total_cost = self.individual_cost(user_id) + office_cost + \
-                    (self.shipment_price / self.orders_total() * self.orders_total(user_id)
+                     (self.shipment_price / self.orders_total() * self.orders_total(user_id)
                       if self.orders_total() > 0 else 0)
         return office_cost, self.individual_cost(user_id), total_cost
-
-    def amounts_per_user(self, user_id):
-        individual_amount = 0
-        office_amount = 0
-        total_amount = 0
-
-        # for order_row, coffee_price in self.individual_rows_with_prices():
-        #     individual_cost += (order_row.amount *
-        #                         (coffee_price.price25 if self.orders_total() < 50 else coffee_price.price50))
 
 
 class OrderRow(db.Model):
     __tablename__ = 'order_rows'
     id = db.Column(db.Integer(), primary_key=True)
-    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False, index=True)
     buyin = relationship(Buyin, back_populates='order_rows')
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     user = relationship(User)
-    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
+    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False,
+                               index=True)
     coffee_type = relationship(CoffeeSort)
     amount = db.Column(db.Float())
     __table_args__ = (db.UniqueConstraint(buyin_id, user_id, coffee_type_id),)
@@ -212,9 +205,10 @@ class OrderRow(db.Model):
 class OfficeOrder(db.Model):
     __tablename__ = 'office_orders'
     id = db.Column(db.Integer(), primary_key=True)
-    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False, index=True)
     buyin = relationship(Buyin)
-    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False)
+    coffee_type_id = db.Column(db.Integer, db.ForeignKey('coffee_sorts.id', ondelete='CASCADE'), nullable=False,
+                               index=True)
     coffee_type = relationship(CoffeeSort)
     __table_args__ = (db.UniqueConstraint(buyin_id, coffee_type_id),)
 
@@ -222,9 +216,24 @@ class OfficeOrder(db.Model):
 class OfficeOrderRow(db.Model):
     __tablename__ = 'office_rows'
     id = db.Column(db.Integer(), primary_key=True)
-    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False, index=True)
     buyin = relationship(Buyin, back_populates='office_order_rows')
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     user = relationship(User)
     cups_per_day = db.Column(db.Float())
     __table_args__ = (db.UniqueConstraint(buyin_id, user_id),)
+
+
+class NewsItem(db.Model):
+    __tablename__ = 'news'
+    id = db.Column(db.Integer(), primary_key=True)
+    timestamp = db.Column(db.DateTime(), default=datetime.now)
+    header = db.Column(db.String(120, collation='NOCASE'))
+    content = db.Column(db.String(1024, collation='NOCASE'))
+
+
+class UserViewedNews(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    news_id = db.Column(db.Integer, db.ForeignKey('news.id'), nullable=False, index=True)
+    viewed_at = db.Column(db.DateTime(), default=datetime.now)

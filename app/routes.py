@@ -10,16 +10,30 @@ from werkzeug.utils import redirect
 
 from app import app, db
 from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm, \
-    ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm
+    ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
-    OfficeOrderRow
-from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin
+    OfficeOrderRow, UserViewedNews, NewsItem
+from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
+    get_old_news
 
 
 @app.route('/')
 @app.route('/index')
+@app.route('/news')
 @login_required
-def index():
+def news():
+    unread_news = get_unread_news()
+    old_news = get_old_news()
+    for news_item in unread_news:
+        db.session.add(UserViewedNews(user_id=current_user.id, news_id=news_item.id))
+    db.session.commit()
+    return render_template('news.html', title='Новости',
+                           unread_news=unread_news, old_news=old_news, add_form=AddNewsItemForm())
+
+
+@app.route('/status')
+@login_required
+def status():
     delete_row_form = DeleteOrderRowForm()
     current_buyin = get_current_buyin()
     if current_buyin:
@@ -28,7 +42,7 @@ def index():
         rows = []
     set_cups_form = AddCupsToOfficeForm()
     set_cups_form.number.data = get_cups_for_current_user(current_buyin)
-    return render_template('index.html', title='Home', user=current_user,
+    return render_template('status.html', title='Статус закупки', user=current_user,
                            current_buyin=current_buyin, delete_row_form=delete_row_form,
                            set_cups_form=set_cups_form,
                            my_own_order=rows)
@@ -65,7 +79,7 @@ def price():
     logging.info("%s", current_price)
     # TODO если нет текущего прайса, то и заказ сделать нельзя!
     form = OrderRowForm()
-    return render_template('price.html', coffee_with_prices=coffee_with_prices,
+    return render_template('price.html', title='Прайс и заказ', coffee_with_prices=coffee_with_prices,
                            date_to=current_price.date_to if current_price else None,
                            form=form, add_form=add_form, add_office_form=add_office_form)
 
@@ -87,7 +101,7 @@ def coffee():
                     logging.error("Error in %s: %s", fieldName, err)
                     flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
     coffee_sorts = CoffeeSort.query.all()
-    return render_template('coffee.html', coffee_sorts=coffee_sorts, add_form=add_form)
+    return render_template('coffee.html', title='Ассортимент кофе', coffee_sorts=coffee_sorts, add_form=add_form)
 
 
 @app.route('/officeorder', methods=['POST'])
@@ -142,7 +156,7 @@ def delete_order_row():
     current_buyin = get_open_buyin()
     if current_buyin.state != States.OPEN:
         flash('Закупка закрыта, заказ изменить нельзя!', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('status'))
     try:
         OrderRow.query.filter_by(id=delete_row_form.id.data).delete()
         db.session.commit()
@@ -150,7 +164,7 @@ def delete_order_row():
     except Exception:
         logging.exception("Failed to delete order row id=%s", delete_row_form.id.data)
         flash('Кофе уже удален из заказа', 'danger')
-    return redirect(url_for('index'))
+    return redirect(url_for('status'))
 
 
 @app.route('/price/manage', methods=['GET', 'POST'])
@@ -184,7 +198,7 @@ def buyin():
     proceed_buyin_form = ProceedBuyinForm()
     set_cups_form = AddCupsToOfficeForm()
     set_cups_form.number.data = get_cups_for_current_user(current_buyin)
-    return render_template('buyins.html', buyin_form=buyin_form, buyins=buyins, current_buyin=current_buyin,
+    return render_template('buyins.html', title='Управление закупкой', buyin_form=buyin_form, buyins=buyins, current_buyin=current_buyin,
                            set_cups_form=set_cups_form,
                            proceed_buyin_form=proceed_buyin_form)
 
@@ -203,10 +217,13 @@ def proceed_buyin():
 @app.route('/officeorder/my', methods=['POST'])
 @login_required
 def my_cups():
-    current_buyin = get_open_buyin()
+    current_buyin = get_current_buyin()
+    if not current_buyin:
+        flash('Нет текущей закупки!', 'danger')
+        return redirect(url_for('status'))
     if current_buyin.state != States.OPEN:
         flash('Закупка закрыта, заказ изменить нельзя!', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('status'))
     set_cups_form = AddCupsToOfficeForm()
     cups_number = set_cups_form.number.data
     logging.info('Trying to set %s cups for user %s', cups_number, current_user)
@@ -232,4 +249,37 @@ def my_cups():
             for err in errorMessages:
                 logging.error("Error in %s: %s", fieldName, err)
                 flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
-    return redirect(url_for('index'))
+    return redirect(url_for('status'))
+
+
+@app.route('/buyin/by_users', methods=['GET'])
+@roles_required('Босс')
+def buyin_by_users():
+    return render_template('buyin_by_users.html')
+
+
+@app.route('/buyin/by_sorts', methods=['GET'])
+@roles_required('Босс')
+def buyin_by_sorts():
+    return render_template('buyin_by_sorts.html')
+
+
+@app.route('/news/add', methods=['POST'])
+@roles_required('Босс')
+def add_news_item():
+    form = AddNewsItemForm()
+    if form.validate():
+        db.session.add(NewsItem(header=form.header.data, content=form.content.data))
+        db.session.commit()
+    else:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                logging.error("Error in %s: %s", fieldName, err)
+                flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
+        return redirect(url_for('news'))
+    return redirect(url_for('status'))
+
+
+@app.context_processor
+def inject_unread_count():
+    return dict(unread_count=len(get_unread_news()) if current_user.is_authenticated else 0)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask_wtf import FlaskForm
-from wtforms import FloatField, SubmitField, IntegerField, SelectField, StringField, DateField
+from wtforms import FloatField, SubmitField, IntegerField, SelectField, StringField, DateField, TextAreaField
 from wtforms.validators import DataRequired, NumberRange
 
 
@@ -54,3 +54,9 @@ class AddOfficeOrderForm(FlaskForm):
 class AddCupsToOfficeForm(FlaskForm):
     number = FloatField('Я пью чашек в день:', validators=[NumberRange(min=0)])
     submit = SubmitField('Сохранить')
+
+
+class AddNewsItemForm(FlaskForm):
+    header = StringField('Заголовок:', validators=[DataRequired()])
+    content = TextAreaField('Текст новости:', validators=[DataRequired()])
+    submit = SubmitField('Добавить')

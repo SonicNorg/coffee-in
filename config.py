@@ -13,7 +13,7 @@ class Config(object):
     BABEL_DEFAULT_LOCALE = 'ru'
     BABEL_DEFAULT_TIMEZONE = 'UTC+4'
 
-    APP_VERSION = '0.1a'
+    APP_VERSION = '0.7a'
 
     MAIL_SERVER = 'smtp.yandex.ru'
     MAIL_PORT = 465

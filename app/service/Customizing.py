@@ -41,7 +41,7 @@ class CustomUserProfileForm(forms.EditUserProfileForm):
 class CustomRegisterForm(forms.RegisterForm):
 
     def validate(self):
-        self.email.validators.append(CertainDomains(os.environ.get('CORPORATE_DOMAIN', []).split()))
+        self.email.validators.append(CertainDomains(os.environ.get('CORPORATE_DOMAINS', '').split()))
         return super().validate()
 
 

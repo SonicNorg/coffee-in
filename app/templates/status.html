@@ -2,7 +2,8 @@
 
 {% block content %}
 {% include 'fragments/current_buyin.html' %}
-<h2>Мой заказ: {{ current_buyin.costs_per_user(current_user.id)[2] }} руб.</h2>
+{% set costs_per_user = current_buyin.costs_per_user(current_user.id) if current_buyin else [0, 0, 0] %}
+<h2>Мой заказ: {{ "{0:.2f}".format(costs_per_user[2]) }} руб.</h2>
 <br>
     <table class="table">
         <tbody>
@@ -15,13 +16,13 @@
                         {{ set_cups_form.submit(class='inline') }}
                     </form>
                 </td>
-                <td colspan="2"><h4>На {{ current_buyin.days }} дней это {{ current_buyin.costs_per_user(current_user.id)[0] }} руб.</h4></td>
+                <td colspan="2"><h4>На {{ current_buyin.days }} дней это {{ "{0:.2f}".format(costs_per_user[0]) }} руб.</h4></td>
             </tr>
         </tbody>
     </table>
 <h3>Мой заказ домой:
-    {% if current_buyin.costs_per_user(current_user.id)[1] > 0 %}
-    {{ current_buyin.costs_per_user(current_user.id)[1] }} руб.
+    {% if costs_per_user[1] > 0 %}
+    {{ "{0:.2f}".format(costs_per_user[1]) }} руб.
     {% endif %}
 </h3>
 <table class="table table-striped table-hover">

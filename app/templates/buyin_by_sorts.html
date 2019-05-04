@@ -1,0 +1,40 @@
+{% extends 'flask_user/_authorized_base.html' %}
+
+{% block content %}
+<h2>Список кофе</h2>
+<table class="table table-striped table-hover">
+    <thead>
+    <tr>
+    <th>Сорт</th>
+    <th>Описание</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for coffee in coffee_sorts %}
+    <tr>
+        <td>{{ coffee.name }}</td>
+        <td>{{ coffee.description }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if current_user.has_roles('Босс') %}
+<h4>Добавить кофе:</h4>
+<form action="{{ url_for('coffee') }}" method="post">
+    {{ add_form.hidden_tag() }}
+    {{ add_form.name() }}
+    {% if add_form.name.errors %}
+        {% for e in add_form.name.errors %}
+            <p class="help-block alert alert-danger">{{ e }}</p>
+        {% endfor %}
+    {% endif %}
+    {{ add_form.description() }}
+    {% if add_form.description.errors %}
+        {% for e in add_form.description.errors %}
+            <p class="help-block alert alert-danger">{{ e }}</p>
+        {% endfor %}
+    {% endif %}
+    {{ add_form.submit() }}
+</form>
+{% endif %}
+{% endblock %}
