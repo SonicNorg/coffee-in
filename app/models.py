@@ -187,6 +187,15 @@ class Buyin(db.Model):
                       if self.orders_total() > 0 else 0)
         return office_cost, self.individual_cost(user_id), total_cost
 
+    def proceed(self):
+        # todo check state
+        # todo check if not round?
+        # todo persist
+        # todo post news via util method
+        # db.session.add(self)
+        # db.session.commit()
+        self.state = States.OPEN
+
 
 class OrderRow(db.Model):
     __tablename__ = 'order_rows'
@@ -237,3 +246,11 @@ class UserViewedNews(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     news_id = db.Column(db.Integer, db.ForeignKey('news.id'), nullable=False, index=True)
     viewed_at = db.Column(db.DateTime(), default=datetime.now)
+
+
+class UserPayment(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    buyin_id = db.Column(db.Integer, db.ForeignKey('buyins.id'), nullable=False, index=True)
+    amount = db.Column(db.Float(), nullable=False)
+    __table_args__ = (db.UniqueConstraint(buyin_id, user_id),)

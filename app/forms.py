@@ -60,3 +60,10 @@ class AddNewsItemForm(FlaskForm):
     header = StringField('Заголовок:', validators=[DataRequired()])
     content = TextAreaField('Текст новости:', validators=[DataRequired()])
     submit = SubmitField('Добавить')
+
+
+class SetUserPaymentForm(FlaskForm):
+    user_id = IntegerField('user_id', validators=[DataRequired()])
+    user = StringField('Имя пользователя:', validators=[DataRequired()])
+    amount = FloatField('Сумма', validators=[DataRequired()])
+    submit = SubmitField('Внести')

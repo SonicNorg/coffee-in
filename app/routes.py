@@ -5,14 +5,14 @@ from datetime import datetime
 from flask import render_template, url_for, flash, request
 from flask_login import current_user
 from flask_user import login_required, roles_required
-from sqlalchemy import and_
+from sqlalchemy import and_, join, outerjoin
 from werkzeug.utils import redirect
 
 from app import app, db
 from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm, \
-    ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm
+    ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm, SetUserPaymentForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
-    OfficeOrderRow, UserViewedNews, NewsItem
+    OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment
 from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
     get_old_news
 
@@ -198,8 +198,8 @@ def buyin():
     proceed_buyin_form = ProceedBuyinForm()
     set_cups_form = AddCupsToOfficeForm()
     set_cups_form.number.data = get_cups_for_current_user(current_buyin)
-    return render_template('buyins.html', title='Управление закупкой', buyin_form=buyin_form, buyins=buyins, current_buyin=current_buyin,
-                           set_cups_form=set_cups_form,
+    return render_template('buyins.html', title='Управление закупкой', buyin_form=buyin_form,
+                           buyins=buyins, current_buyin=current_buyin, set_cups_form=set_cups_form,
                            proceed_buyin_form=proceed_buyin_form)
 
 
@@ -207,10 +207,7 @@ def buyin():
 @roles_required('Босс')
 def proceed_buyin():
     current_buyin = Buyin.query.get(ProceedBuyinForm().id.data)
-    if current_buyin.state != States.FINISHED:
-        current_buyin.state = States[current_buyin.state.ordinal() + 1]
-        db.session.add(current_buyin)
-        db.session.commit()
+    current_buyin.proceed()
     return redirect(url_for('buyin'))
 
 
@@ -252,13 +249,31 @@ def my_cups():
     return redirect(url_for('status'))
 
 
-@app.route('/buyin/by_users', methods=['GET'])
+@app.route('/buyin/by_users')
 @roles_required('Босс')
 def buyin_by_users():
-    return render_template('buyin_by_users.html')
+    current_buyin = get_current_buyin()
+    individual_subquery = db.session.query(OrderRow.user_id) \
+        .filter(OrderRow.buyin_id == current_buyin.id).distinct()
+    office_subquery = db.session.query(OfficeOrderRow.user_id) \
+        .filter(OfficeOrderRow.buyin_id == current_buyin.id).distinct()
+    users_ids = individual_subquery.union(office_subquery).distinct()
+    users_costs = []
+    total_sum = 0
+    users_with_payments_query_result = db.session.query(User, UserPayment) \
+        .select_from(outerjoin(User, UserPayment, and_(
+            UserPayment.user_id == User.id, UserPayment.buyin_id == current_buyin.id), False)) \
+        .filter(User.id.in_(users_ids)) \
+        .order_by(User.last_name, User.id).all()
+    for user, user_payment in users_with_payments_query_result:
+        costs_per_user = current_buyin.costs_per_user(user.id)
+        total_sum += costs_per_user[2]
+        users_costs.append((user, costs_per_user, user_payment))
+    return render_template('buyin_by_users.html', current_buyin=current_buyin, total_sum=total_sum,
+                           users_costs=users_costs, set_payment_form=SetUserPaymentForm())
 
 
-@app.route('/buyin/by_sorts', methods=['GET'])
+@app.route('/buyin/by_sorts')
 @roles_required('Босс')
 def buyin_by_sorts():
     return render_template('buyin_by_sorts.html')
@@ -278,6 +293,29 @@ def add_news_item():
                 flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
         return redirect(url_for('news'))
     return redirect(url_for('status'))
+
+
+@app.route('/payment/set', methods=['POST'])
+@roles_required('Босс')
+def set_payment():
+    form = SetUserPaymentForm()
+    current_buyin = get_current_buyin()
+    if form.validate():
+        payment = UserPayment.query.filter(UserPayment.user_id == form.user_id.data,
+                                           UserPayment.buyin_id == current_buyin.id).first()
+        if not payment:
+            payment = UserPayment(user_id=form.user_id.data, buyin_id=current_buyin.id, amount=form.amount.data)
+        else:
+            payment.amount = form.amount.data
+        db.session.add(payment)
+        db.session.commit()
+        flash('{} оплатил {} руб.'.format(form.user.data, form.amount.data), 'success')
+    else:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                logging.error("Error in %s: %s", fieldName, err)
+                flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
+    return redirect(url_for('buyin_by_users'))
 
 
 @app.context_processor

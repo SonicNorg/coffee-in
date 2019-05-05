@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from flask_login import current_user
-from sqlalchemy import and_, outerjoin, join
+from sqlalchemy import and_, join
 
 from app import db
 from app.models import Price, OfficeOrderRow, States, Buyin, NewsItem, UserViewedNews
@@ -35,15 +35,6 @@ def get_cups_for_current_user(current_buyin):
     if office_order_row:
         cups = office_order_row.cups_per_day
     return cups
-
-
-#
-# def get_unread_news():
-#     return [None, None]
-#
-#
-# def get_old_news():
-#     return [None, None]
 
 
 def get_unread_news():

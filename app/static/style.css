@@ -6,7 +6,7 @@
  }
 
  .navbar {
-    background: linear-gradient(to top, #cfaf7a 5%, #532815 100%);
+    background: linear-gradient(to top, #cfaf7a, #532815 80%);
  }
 
  .navbar-text {
