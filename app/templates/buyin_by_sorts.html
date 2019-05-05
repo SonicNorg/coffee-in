@@ -1,40 +1,25 @@
 {% extends 'flask_user/_authorized_base.html' %}
 
 {% block content %}
-<h2>Список кофе</h2>
-<table class="table table-hover">
+{% include 'fragments/edit_buyin.html' %}
+<h2>По сортам кофе</h2>
+<table class="table table-sm table-hover">
     <thead>
-    <tr>
-    <th>Сорт</th>
-    <th>Описание</th>
-    </tr>
+        <th width="24%">Сорт кофе</th>
+        <th>В офис</th>
+        <th>Домой</th>
+        <th>Итого</th>
     </thead>
     <tbody>
-    {% for coffee in coffee_sorts %}
-    <tr>
-        <td>{{ coffee.name }}</td>
-        <td>{{ coffee.description }}</td>
-    </tr>
+    {% for sort, weights in sorts_all_weights %}
+        <tr>
+            <td>{{ sort.name }}</td>
+            <td>{{ "{0:.2f}".format(weights[0]) }} кг.</td>
+            <td>{{ "{0:.2f}".format(weights[1]) }} кг.</td>
+            <td><b>{{ "{0:.2f}".format(weights[2]) }} кг.</b></td>
+        </tr>
     {% endfor %}
     </tbody>
 </table>
-{% if current_user.has_roles('Босс') %}
-<h4>Добавить кофе:</h4>
-<form action="{{ url_for('coffee') }}" method="post">
-    {{ add_form.hidden_tag() }}
-    {{ add_form.name() }}
-    {% if add_form.name.errors %}
-        {% for e in add_form.name.errors %}
-            <p class="help-block alert alert-danger">{{ e }}</p>
-        {% endfor %}
-    {% endif %}
-    {{ add_form.description() }}
-    {% if add_form.description.errors %}
-        {% for e in add_form.description.errors %}
-            <p class="help-block alert alert-danger">{{ e }}</p>
-        {% endfor %}
-    {% endif %}
-    {{ add_form.submit() }}
-</form>
-{% endif %}
+<h3>Контрольная сумма, должна быть равна объему закупки: <b>{{ total_sum }} кг</b></h3>
 {% endblock %}

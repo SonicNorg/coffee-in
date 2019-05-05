@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime
+from functools import reduce
 
 from flask import render_template, url_for, flash, request
 from flask_login import current_user
 from flask_user import login_required, roles_required
-from sqlalchemy import and_, join, outerjoin
+from sqlalchemy import and_, join, outerjoin, func
 from werkzeug.utils import redirect
 
 from app import app, db
@@ -262,7 +263,7 @@ def buyin_by_users():
     total_sum = 0
     users_with_payments_query_result = db.session.query(User, UserPayment) \
         .select_from(outerjoin(User, UserPayment, and_(
-            UserPayment.user_id == User.id, UserPayment.buyin_id == current_buyin.id), False)) \
+        UserPayment.user_id == User.id, UserPayment.buyin_id == current_buyin.id), False)) \
         .filter(User.id.in_(users_ids)) \
         .order_by(User.last_name, User.id).all()
     for user, user_payment in users_with_payments_query_result:
@@ -276,7 +277,46 @@ def buyin_by_users():
 @app.route('/buyin/by_sorts')
 @roles_required('Босс')
 def buyin_by_sorts():
-    return render_template('buyin_by_sorts.html')
+    # todo refactor all of this shit
+    current_buyin = get_current_buyin()
+    office_weight_for_each_sort = current_buyin.office_total() / len(current_buyin.office_orders)
+
+    individual_subquery = db.session.query(OrderRow.coffee_type_id) \
+        .filter(OrderRow.buyin_id == current_buyin.id).distinct()
+    office_subquery = db.session.query(OfficeOrder.coffee_type_id) \
+        .filter(OfficeOrder.buyin_id == current_buyin.id).distinct()
+    coffee_ids = individual_subquery.union(office_subquery).distinct()
+    sorts = dict(map(lambda coffee_sort: (coffee_sort.id, coffee_sort),
+                     CoffeeSort.query.filter(CoffeeSort.id.in_(coffee_ids)).all()))
+    individual_weights_per_coffee_id = db.session.query(
+        OrderRow.coffee_type_id, func.sum(OrderRow.amount).label('total')
+    ).filter(and_(OrderRow.buyin_id == current_buyin.id, OrderRow.coffee_type_id.in_(coffee_ids))) \
+        .group_by(OrderRow.coffee_type_id)
+
+    individual_ids_weights = dict(individual_weights_per_coffee_id.all())
+    office_ids_weights = dict(
+        map(lambda of_order: (of_order.coffee_type_id, office_weight_for_each_sort), current_buyin.office_orders))
+    total_ids_weights = dict(office_ids_weights)
+    for coffee_id, weight in individual_ids_weights.items():
+        if coffee_id in office_ids_weights:
+            total_ids_weights[coffee_id] = total_ids_weights[coffee_id] + weight
+        else:
+            total_ids_weights[coffee_id] = weight
+
+    total_sum = 0
+    for _, v in total_ids_weights.items():
+        total_sum += v
+    # individual_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), individual_ids_weights.items()))
+    # office_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), office_ids_weights.items()))
+    # total_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), total_ids_weights.items()))
+
+    sorts_all_weights = list(
+        map(lambda item: (sorts[item[0]], (
+            office_ids_weights[item[0]] if item[0] in office_ids_weights else 0,
+            individual_ids_weights[item[0]] if item[0] in individual_ids_weights else 0, item[1])),
+            total_ids_weights.items()))
+    return render_template('buyin_by_sorts.html', current_buyin=current_buyin,
+                           sorts_all_weights=sorts_all_weights, total_sum=total_sum)
 
 
 @app.route('/news/add', methods=['POST'])
