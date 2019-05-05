@@ -49,3 +49,9 @@ def get_old_news():
         UserViewedNews.user_id == current_user.id, NewsItem.id == UserViewedNews.news_id))) \
         .order_by(NewsItem.timestamp.desc()) \
         .all()
+
+
+def post_news(header, content):
+    # todo add flask-mail and send mails with news
+    db.session.add(NewsItem(header=header, content=content))
+    db.session.flush()

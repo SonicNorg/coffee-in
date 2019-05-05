@@ -33,7 +33,7 @@ class CreatePriceForm(FlaskForm):
 
 
 class BuyinForm(FlaskForm):
-    next_step = DateField('Дата закрытия:')
+    next_step = DateField('Сбор денег начнется:')
     submit = SubmitField('Создать новую закупку')
 
 
@@ -43,7 +43,8 @@ class DeleteOrderRowForm(FlaskForm):
 
 
 class ProceedBuyinForm(FlaskForm):
-    id = IntegerField('id')
+    id = IntegerField('id', validators=[DataRequired()])
+    next_date = DateField('Следующее изменение статуса:', validators=[DataRequired()])
 
 
 class AddOfficeOrderForm(FlaskForm):

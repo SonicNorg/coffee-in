@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 from datetime import datetime
 from enum import Enum
 
@@ -77,9 +78,40 @@ class CoffeePrice(db.Model):
 class States(Enum):
     PLANNING = ('Планируется', 'Откроется', 'Открыть')
     OPEN = ('Открыта', 'Сбор денег начнется', 'Закрыть и начать сбор денег')
-    FIXED = ('Зафиксирована, сбор денег', 'Заказ отправится', 'Оплатить')
+    FIXED = ('Зафиксирована, сбор денег', 'Заказ отправится', 'Оплатить поставщику')
     ORDERED = ('Заказ отправлен и оплачен', 'Кофе приедет', 'Подтвердить получение')
-    FINISHED = ('Закончена', 'Закончена', 'Закупка завершена')
+    FINISHED = ('Заказ получен, закупка завершена', 'Заказ получен, закупка завершена',
+                'Заказ получен, закупка завершена')
+
+    def has_next(self):
+        return self != States.FINISHED
+
+    def has_prev(self):
+        return self != States.PLANNING
+
+    def next(self):
+        cls = self.__class__
+        members = list(cls)
+        index = members.index(self) + 1
+        if index >= len(members):
+            # to cycle around
+            # index = 0
+            #
+            # to error out
+            raise StopIteration('end of enumeration reached')
+        return members[index]
+
+    def prev(self):
+        cls = self.__class__
+        members = list(cls)
+        index = members.index(self) - 1
+        if index < 0:
+            # to cycle around
+            # index = len(members) - 1
+            #
+            # to error out
+            raise StopIteration('beginning of enumeration reached')
+        return members[index]
 
 
 class Buyin(db.Model):
@@ -187,14 +219,32 @@ class Buyin(db.Model):
                       if self.orders_total() > 0 else 0)
         return office_cost, self.individual_cost(user_id), total_cost
 
-    def proceed(self):
-        # todo check state
+    def proceed(self, next_date):
+        if not next_date:
+            next_date = datetime.now()
+        header = "Статус закупки изменился на '{}'!"
+        content = "Если здесь этот текст, значит, что-то пошло не так :)"
+        if self.state == States.PLANNING:
+            self.state = States.OPEN
+            content = "Теперь можно начинать заказывать!"
+        elif self.state == States.OPEN:
+            self.state = States.FIXED
+            content = "Изменять заказы больше нельзя, прошу сдавать деньги!"
+        elif self.state == States.FIXED:
+            self.state = States.ORDERED
+            content = "Ожидаем получения оплаты поставщиком и отгрузки свежеобжаренных вкусняшек!"
+        elif self.state == States.ORDERED:
+            self.state = States.FINISHED
+            content = "Закупка завершена, кофе получен, подходите разбирать свои заказы!"
+        else:
+            return
         # todo check if not round?
-        # todo persist
-        # todo post news via util method
-        # db.session.add(self)
-        # db.session.commit()
-        self.state = States.OPEN
+        self.next_step = next_date
+        logging.info("Buyin state changed to %s, next_step: %s", self.state, next_date)
+        from app.util import post_news
+        post_news(header.format(self.state.value[0]), content)
+        db.session.add(self)
+        db.session.commit()
 
 
 class OrderRow(db.Model):

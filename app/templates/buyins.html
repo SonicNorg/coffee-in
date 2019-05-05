@@ -52,7 +52,12 @@
         <form action="{{ url_for('proceed_buyin') }}" method="post">
             {{ proceed_buyin_form.hidden_tag() }}
             {{ proceed_buyin_form.id(hidden='hidden', value=current_buyin.id) }}
-            <button type="submit">{{ current_buyin.state.value[2] }}</button>
+            {% if current_buyin.state.next().has_next() %}
+            {{ current_buyin.state.next().value[1] }}: {{ proceed_buyin_form.next_date(type='date') }}
+            {% else %}
+            {{ proceed_buyin_form.next_date(type='date', hidden='hidden', value=today().strftime("%Y-%m-%d")) }}
+            {% endif %}
+            <button type="submit">{{ current_buyin.state.value[2] }} (перевести в статус '{{ current_buyin.state.next().value[0] }}')</button>
         </form>
     {% endif %}
 {% endif %}
@@ -73,7 +78,7 @@
     <tr>
         <td>{{ buyin.created_at }}</td>
         <td>{{ buyin.state.value[0] }}</td>
-        <td>{{ buyin.amount }} кг</td>
+        <td>{{ buyin.orders_total() }} кг</td>
         <td>{{ buyin.total_cost_without_shipment() + buyin.shipment_price }} руб.</td>
     </tr>
     {% endfor %}

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime
-from functools import reduce
 
 from flask import render_template, url_for, flash, request
 from flask_login import current_user
 from flask_user import login_required, roles_required
-from sqlalchemy import and_, join, outerjoin, func
+from sqlalchemy import and_, outerjoin, func
 from werkzeug.utils import redirect
 
 from app import app, db
@@ -16,7 +15,7 @@ from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceFo
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
     OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment
 from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
-    get_old_news
+    get_old_news, post_news
 
 
 @app.route('/')
@@ -131,7 +130,10 @@ def order():
     coffee_type = CoffeeSort.query.get(row_form.id.data)
     amount = row_form.amount.data
     logging.info("Current buyin: %s", current_buyin)
-    if current_buyin and row_form.validate():
+    if not current_buyin:
+        flash("Закупка не открыта, нельзя добавить в заказ: {}, {} kg".format(coffee_type.name, amount), 'danger')
+        return redirect(url_for('price'))
+    if row_form.validate():
         logging.info("Form is valid, processing order: coffee = %s, amount = %s", coffee_type, amount)
         order_row = OrderRow.query.filter(and_(OrderRow.user_id == current_user.id,
                                                OrderRow.buyin_id == current_buyin.id,
@@ -146,7 +148,7 @@ def order():
     else:
         logging.info("Form is invalid, or current buyin is not found! coffee = %s, amount = %s", coffee_type.name,
                      amount)
-        flash("Нет текущей закупки, или некорректный заказ!: {}, {} kg".format(coffee_type.name, amount), 'danger')
+        flash("Некорректный заказ!: {}, {} kg".format(coffee_type.name, amount), 'danger')
     return redirect(url_for('price'))
 
 
@@ -156,7 +158,7 @@ def delete_order_row():
     delete_row_form = DeleteOrderRowForm()
     logging.debug("Try to delete row id=%s", delete_row_form.id.data)
     current_buyin = get_open_buyin()
-    if current_buyin.state != States.OPEN:
+    if not current_buyin:
         flash('Закупка закрыта, заказ изменить нельзя!', 'danger')
         return redirect(url_for('status'))
     try:
@@ -193,11 +195,13 @@ def buyin():
     delete_office_order_form = DeleteOfficeOrderForm()
     if request.method == 'POST':
         new_buyin = Buyin(state=States.OPEN, next_step=buyin_form.next_step.data, created_at=datetime.now())
+        post_news("Создана новая закупка!", "Статус новой закупки - {}".format(new_buyin.state.value[0]))
         db.session.add(new_buyin)
         db.session.commit()
     buyins = Buyin.query.order_by(Buyin.created_at.desc()).all()
-    current_buyin = get_open_buyin()
-    edit_buyin_form = EditBuyinForm(days=current_buyin.days, next_date=current_buyin.next_step)
+    current_buyin = get_current_buyin()
+    edit_buyin_form = EditBuyinForm(days=current_buyin.days,
+                                    next_date=current_buyin.next_step) if current_buyin else EditBuyinForm()
     logging.info('Current buyin = %s', current_buyin)
     proceed_buyin_form = ProceedBuyinForm()
     set_cups_form = AddCupsToOfficeForm()
@@ -211,8 +215,15 @@ def buyin():
 @app.route('/buyin/proceed', methods=['POST'])
 @roles_required('Босс')
 def proceed_buyin():
-    current_buyin = Buyin.query.get(ProceedBuyinForm().id.data)
-    current_buyin.proceed()
+    form = ProceedBuyinForm()
+    if form.validate():
+        current_buyin = Buyin.query.get(form.id.data)
+        current_buyin.proceed(form.next_date.data)
+    else:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                logging.error("Error in %s: %s", fieldName, err)
+                flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
     return redirect(url_for('buyin'))
 
 
@@ -258,6 +269,9 @@ def my_cups():
 @roles_required('Босс')
 def buyin_by_users():
     current_buyin = get_current_buyin()
+    if not current_buyin:
+        return render_template('buyin_by_users.html', current_buyin=current_buyin, total_sum=0,
+                               users_costs=[], set_payment_form=SetUserPaymentForm())
     individual_subquery = db.session.query(OrderRow.user_id) \
         .filter(OrderRow.buyin_id == current_buyin.id).distinct()
     office_subquery = db.session.query(OfficeOrderRow.user_id) \
@@ -283,6 +297,9 @@ def buyin_by_users():
 def buyin_by_sorts():
     # todo refactor all of this shit
     current_buyin = get_current_buyin()
+    if not current_buyin:
+        return render_template('buyin_by_sorts.html', current_buyin=current_buyin,
+                               sorts_all_weights=[], total_sum=0)
     office_weight_for_each_sort = current_buyin.office_total() / len(current_buyin.office_orders)
 
     individual_subquery = db.session.query(OrderRow.coffee_type_id) \
@@ -394,3 +411,8 @@ def delete_office_order():
 @app.context_processor
 def inject_unread_count():
     return dict(unread_count=len(get_unread_news()) if current_user.is_authenticated else 0)
+
+
+@app.context_processor
+def inject_now():
+    return dict(now=datetime.now, today=datetime.today)
