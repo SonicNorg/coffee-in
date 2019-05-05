@@ -67,3 +67,14 @@ class SetUserPaymentForm(FlaskForm):
     user = StringField('Имя пользователя:', validators=[DataRequired()])
     amount = FloatField('Сумма', validators=[DataRequired()])
     submit = SubmitField('Внести')
+
+
+class EditBuyinForm(FlaskForm):
+    days = IntegerField('user_id', validators=[DataRequired()])
+    next_date = DateField(validators=[DataRequired()])
+    submit = SubmitField('Сохранить закупку')
+
+
+class DeleteOfficeOrderForm(FlaskForm):
+    id = IntegerField('id', validators=[DataRequired()])
+    submit = SubmitField('Убрать')

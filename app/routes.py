@@ -11,7 +11,8 @@ from werkzeug.utils import redirect
 
 from app import app, db
 from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm, \
-    ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm, SetUserPaymentForm
+    ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm, SetUserPaymentForm, EditBuyinForm, \
+    DeleteOfficeOrderForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
     OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment
 from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
@@ -159,7 +160,7 @@ def delete_order_row():
         flash('Закупка закрыта, заказ изменить нельзя!', 'danger')
         return redirect(url_for('status'))
     try:
-        OrderRow.query.filter_by(id=delete_row_form.id.data).delete()
+        OrderRow.query.filter(OrderRow.id == delete_row_form.id.data).delete()
         db.session.commit()
         flash('Удалено', 'success')
     except Exception:
@@ -189,19 +190,22 @@ def manage_prices():
 @roles_required('Босс')
 def buyin():
     buyin_form = BuyinForm()
+    delete_office_order_form = DeleteOfficeOrderForm()
     if request.method == 'POST':
         new_buyin = Buyin(state=States.OPEN, next_step=buyin_form.next_step.data, created_at=datetime.now())
         db.session.add(new_buyin)
         db.session.commit()
     buyins = Buyin.query.order_by(Buyin.created_at.desc()).all()
     current_buyin = get_open_buyin()
+    edit_buyin_form = EditBuyinForm(days=current_buyin.days, next_date=current_buyin.next_step)
     logging.info('Current buyin = %s', current_buyin)
     proceed_buyin_form = ProceedBuyinForm()
     set_cups_form = AddCupsToOfficeForm()
     set_cups_form.number.data = get_cups_for_current_user(current_buyin)
     return render_template('buyins.html', title='Управление закупкой', buyin_form=buyin_form,
                            buyins=buyins, current_buyin=current_buyin, set_cups_form=set_cups_form,
-                           proceed_buyin_form=proceed_buyin_form)
+                           proceed_buyin_form=proceed_buyin_form, edit_buyin_form=edit_buyin_form,
+                           delete_office_order_form=delete_office_order_form)
 
 
 @app.route('/buyin/proceed', methods=['POST'])
@@ -356,6 +360,35 @@ def set_payment():
                 logging.error("Error in %s: %s", fieldName, err)
                 flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
     return redirect(url_for('buyin_by_users'))
+
+
+@app.route('/buyin/edit', methods=['POST'])
+@roles_required('Босс')
+def edit_buyin():
+    form = EditBuyinForm()
+    current_buyin = get_current_buyin()
+    if form.validate():
+        current_buyin.days = form.days.data
+        current_buyin.next_date = form.next_date.data
+        db.session.add(current_buyin)
+        db.session.commit()
+        flash('Текущая закупка успешно изменена.', 'success')
+    else:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                logging.error("Error in %s: %s", fieldName, err)
+                flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
+    return redirect(url_for('buyin_by_users'))
+
+
+@app.route('/officeorder/delete', methods=['POST'])
+@roles_required('Босс')
+def delete_office_order():
+    delete_office_order_form = DeleteOfficeOrderForm()
+    OfficeOrder.query.filter(OfficeOrder.id == delete_office_order_form.id.data).delete()
+    db.session.commit()
+    flash('Кофе удален из офиса', 'success')
+    return redirect(url_for('buyin'))
 
 
 @app.context_processor

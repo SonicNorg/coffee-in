@@ -1,7 +1,7 @@
 {% extends 'flask_user/_authorized_base.html' %}
 
 {% block content %}
-{% include 'fragments/current_buyin.html' %}
+{% include 'fragments/edit_buyin.html' %}
 {% if current_user.has_roles('Босс') %}
     {% if not current_buyin %}
         <h4>Создать новую закупку</h4>
