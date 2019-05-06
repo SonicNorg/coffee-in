@@ -3,6 +3,7 @@ from flask_user import EmailManager, UserManager, forms
 import logging
 
 from app.service.validators import CertainDomains
+from config import Config
 
 
 class EmailManagerWithDomainValidation(EmailManager):
@@ -48,6 +49,8 @@ class CustomRegisterForm(forms.RegisterForm):
 class CustomUserManager(UserManager):
 
     def customize(self, app):
+        logging.info(Config.USER_EMAIL_SENDER_EMAIL)
+        logging.info(Config.MAIL_SERVER)
         logging.info("CustomUserManager INIT")
         self.RegisterFormClass = CustomRegisterForm
         self.UserProfileFormClass = CustomUserProfileForm
