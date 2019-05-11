@@ -38,8 +38,8 @@ def upgrade():
     op.create_table('news',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('timestamp', sa.DateTime(), nullable=True),
-    sa.Column('header', sa.String(length=120, collation='NOCASE'), nullable=True),
-    sa.Column('content', sa.String(length=1024, collation='NOCASE'), nullable=True),
+    sa.Column('header', sa.String(length=120, collation='utf8mb4_general_ci'), nullable=True),
+    sa.Column('content', sa.String(length=1024, collation='utf8mb4_general_ci'), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('prices',
@@ -56,8 +56,8 @@ def upgrade():
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('username', sa.String(length=120, collation='NOCASE'), nullable=True),
-    sa.Column('email', sa.String(length=120, collation='NOCASE'), nullable=True),
+    sa.Column('username', sa.String(length=120, collation='utf8mb4_general_ci'), nullable=True),
+    sa.Column('email', sa.String(length=120, collation='utf8mb4_general_ci'), nullable=True),
     sa.Column('password', sa.String(length=128), nullable=True),
     sa.Column('active', sa.Boolean(), nullable=True),
     sa.Column('email_confirmed_at', sa.DateTime(), nullable=True),

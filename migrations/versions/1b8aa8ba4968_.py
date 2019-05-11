@@ -21,8 +21,8 @@ def upgrade():
     op.create_table('help_item',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('timestamp', sa.DateTime(), nullable=True),
-    sa.Column('question', sa.String(length=240, collation='NOCASE'), nullable=True),
-    sa.Column('answer', sa.String(length=1024, collation='NOCASE'), nullable=True),
+    sa.Column('question', sa.String(length=240, collation='utf8mb4_general_ci'), nullable=True),
+    sa.Column('answer', sa.String(length=1024, collation='utf8mb4_general_ci'), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_unique_constraint(None, 'user_payment', ['buyin_id', 'user_id'])
