@@ -7,11 +7,14 @@ from app import db
 from app.models import Price, OfficeOrderRow, States, Buyin, NewsItem, UserViewedNews
 
 
-def get_open_price():
-    return Price.query \
-        .filter(and_(Price.date_from <= datetime.now().date(), datetime.now().date() <= Price.date_to)) \
-        .order_by(Price.date_from.desc()) \
-        .first()
+def get_price_or_current(price_id=None):
+    if not price_id:
+        return Price.query \
+            .filter(and_(Price.date_from <= datetime.now().date(), datetime.now().date() <= Price.date_to)) \
+            .order_by(Price.date_from.desc()) \
+            .first()
+    else:
+        return Price.query.get(price_id)
 
 
 def get_current_buyin():

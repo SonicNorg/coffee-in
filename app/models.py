@@ -61,6 +61,10 @@ class Price(db.Model):
     date_from = db.Column(db.Date(), nullable=False)
     date_to = db.Column(db.Date(), nullable=False)
 
+    def __repr__(self):
+        return '<Price {}, from {} to {}>'.format(
+            self.id, self.date_from.strftime("%d.%m.%Y"), self.date_to.strftime("%d.%m.%Y"))
+
 
 class CoffeePrice(db.Model):
     __tablename__ = 'coffee_prices'
@@ -121,6 +125,7 @@ class Buyin(db.Model):
     created_at = db.Column(db.DateTime())
     next_step = db.Column(db.Date())
     days = db.Column(db.Integer(), nullable=False, default=25)
+    price_id = db.Column(db.Integer(), db.ForeignKey('prices.id', ondelete='CASCADE'), nullable=True)
     shipment_price = db.Column(db.Float(), nullable=False, default=900)
     order_rows = relationship('OrderRow', back_populates='buyin')
     office_orders = relationship('OfficeOrder')
@@ -176,8 +181,8 @@ class Buyin(db.Model):
         return cost
 
     def office_coffee_prices(self):
-        from app.util import get_open_price
-        cur_price = get_open_price()
+        from app.util import get_price_or_current
+        cur_price = get_price_or_current(self.price_id)
         rows = []
         if cur_price:
             rows = db.session.query(OfficeOrder, CoffeePrice).select_from(
@@ -188,8 +193,8 @@ class Buyin(db.Model):
         return rows
 
     def individual_rows_with_prices(self, user_id=None):
-        from app.util import get_open_price
-        cur_price = get_open_price()
+        from app.util import get_price_or_current
+        cur_price = get_price_or_current(self.price_id)
         rows = []
         if cur_price:
             query = db.session.query(OrderRow, CoffeePrice).select_from(
@@ -229,6 +234,11 @@ class Buyin(db.Model):
             content = "Теперь можно начинать заказывать!"
         elif self.state == States.OPEN:
             self.state = States.FIXED
+            from app.util import get_price_or_current
+            current = get_price_or_current()
+            if not current:
+                return False
+            self.price_id = current.id
             content = "Изменять заказы больше нельзя, прошу сдавать деньги!"
         elif self.state == States.FIXED:
             self.state = States.ORDERED
@@ -237,7 +247,7 @@ class Buyin(db.Model):
             self.state = States.FINISHED
             content = "Закупка завершена, кофе получен, подходите разбирать свои заказы!"
         else:
-            return
+            return False
         # todo check if not round?
         self.next_step = next_date
         logging.info("Buyin state changed to %s, next_step: %s", self.state, next_date)
@@ -245,6 +255,7 @@ class Buyin(db.Model):
         post_news(header.format(self.state.value[0]), content)
         db.session.add(self)
         db.session.commit()
+        return True
 
 
 class OrderRow(db.Model):

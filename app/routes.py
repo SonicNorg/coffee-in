@@ -14,7 +14,7 @@ from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceFo
     DeleteOfficeOrderForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
     OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment, HelpItem
-from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
+from app.util import get_price_or_current, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
     get_old_news, post_news
 
 
@@ -52,7 +52,7 @@ def status():
 @app.route('/price', methods=["GET", "POST"])
 @login_required
 def price():
-    current_price = get_open_price()
+    current_price = get_price_or_current()
     add_office_form = AddOfficeOrderForm()
     if current_price:
         add_form = AddToPriceForm()
@@ -219,7 +219,9 @@ def proceed_buyin():
     form = ProceedBuyinForm()
     if form.validate():
         current_buyin = Buyin.query.get(form.id.data)
-        current_buyin.proceed(form.next_date.data)
+        if not current_buyin.proceed(form.next_date.data):
+            logging.error("Failed to proceed buyin")
+            flash('Ошибка при изменении статуса закупки: возможно, отсутствует текущий прайс!', 'error')
     else:
         for fieldName, errorMessages in form.errors.items():
             for err in errorMessages:
