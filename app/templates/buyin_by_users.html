@@ -2,7 +2,21 @@
 
 {% block content %}
 {% include 'fragments/current_buyin.html' %}
-<h2>По пользователям</h2>
+<h2>По пользователям <input type="text" id="filter"></h2>
+<script>
+  var input = document.getElementById('filter');
+
+  input.oninput = function() {
+    var rows = document.getElementById('payments_body').rows;
+    for (var i = 0; i < rows.length; i++) {
+      if (!rows[i].children[0].textContent.toUpperCase().includes(input.value.toUpperCase())) {
+        rows[i].style.display = 'none';
+      } else {
+        rows[i].style.display = '';
+      }
+    }
+  };
+</script>
 <table class="table table-sm table-hover">
     <thead>
         <th width="24%">Кто</th>
@@ -13,7 +27,7 @@
         <th>Внести</th>
         <th></th>
     </thead>
-    <tbody>
+    <tbody id="payments_body">
     {% for user, costs_per_user, user_payment in users_costs %}
         <tr>
             <td>{{ user.first_name + ' ' + user.username + ' ' + user.last_name + ' ' + user.email }}</td>
