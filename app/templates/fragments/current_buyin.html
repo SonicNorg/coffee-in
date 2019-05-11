@@ -9,6 +9,7 @@
             <th></th>
             <th>В офис</th>
             <th>Домой</th>
+            <th></th>
         </thead>
         <tr>
             <td>Статус:</td>
@@ -20,22 +21,22 @@
         </tr>
         <tr>
             <td>Текущий объем:</td>
-            <td><b>{{ current_buyin.orders_total() }} кг</b></td>
-            <td>{{ current_buyin.office_total() }} кг</td>
-            <td colspan="2">{{ current_buyin.individual_total() }} кг</td>
+            <td><b>{{ "{0:.2f}".format(current_buyin.orders_total()) }} кг</b></td>
+            <td>{{ "{0:.2f}".format(current_buyin.office_total()) }} кг</td>
+            <td colspan="2">{{ "{0:.2f}".format(current_buyin.individual_total()) }} кг</td>
         </tr>
         <tr>
             <td>Текущая сумма:</td>
-            <td><b>{{ current_buyin.total_cost_without_shipment() }} руб.</b></td>
-            <td>{{ current_buyin.office_cost() }} руб.</td>
-            <td colspan="2">{{ current_buyin.individual_cost() }} руб.</td>
+            <td><b>{{ "{0:.2f}".format(current_buyin.total_cost_without_shipment()) }} руб.</b></td>
+            <td>{{ "{0:.2f}".format(current_buyin.office_cost()) }} руб.</td>
+            <td colspan="2">{{ "{0:.2f}".format(current_buyin.individual_cost()) }} руб.</td>
         </tr>
         <tr>
             <td>Плюс доставка:</td>
-            <td>{{ current_buyin.shipment_price }} руб.</td>
+            <td>{{ "{0:.2f}".format(current_buyin.shipment_price) }} руб.</td>
             <td></td>
             <td></td>
-            <td><b>{{ current_buyin.shipment_price + current_buyin.total_cost_without_shipment() }} руб.</b></td>
+            <td><b>{{ "{0:.2f}".format(current_buyin.shipment_price + current_buyin.total_cost_without_shipment()) }} руб.</b></td>
         </tr>
     </table>
     <table class="table table-hover">

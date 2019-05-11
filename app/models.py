@@ -70,8 +70,8 @@ class CoffeePrice(db.Model):
     coffee_type = relationship("CoffeeSort", backref="coffee_sorts")
     price_id = db.Column(db.Integer, db.ForeignKey('prices.id', ondelete='CASCADE'), nullable=False)
     price_ref = relationship(Price, backref="prices")
-    price25 = db.Column(db.Integer())
-    price50 = db.Column(db.Integer())
+    price25 = db.Column(db.Float())
+    price50 = db.Column(db.Float())
     __table_args__ = (db.UniqueConstraint(coffee_type_id, price_id),)
 
 
@@ -121,7 +121,7 @@ class Buyin(db.Model):
     created_at = db.Column(db.DateTime())
     next_step = db.Column(db.Date())
     days = db.Column(db.Integer(), nullable=False, default=25)
-    shipment_price = db.Column(db.Integer(), nullable=False, default=900)
+    shipment_price = db.Column(db.Float(), nullable=False, default=900)
     order_rows = relationship('OrderRow', back_populates='buyin')
     office_orders = relationship('OfficeOrder')
     office_order_rows = relationship('OfficeOrderRow', back_populates='buyin')
@@ -290,18 +290,12 @@ class NewsItem(db.Model):
     header = db.Column(db.String(120, collation='NOCASE'))
     content = db.Column(db.String(1024, collation='NOCASE'))
 
-    def set_content(self, content):
-        self.content = content.replace("\n", "<br>")
-
 
 class HelpItem(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     timestamp = db.Column(db.DateTime(), default=datetime.now)
     question = db.Column(db.String(240, collation='NOCASE'))
     answer = db.Column(db.String(1024, collation='NOCASE'))
-
-    def set_answer(self, answer):
-        self.answer = answer.replace("\n", "<br>")
 
 
 class UserViewedNews(db.Model):

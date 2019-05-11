@@ -43,7 +43,7 @@
                 <tr>
                     <td>{{ order_row.user.first_name + ' ' + order_row.user.username + ' ' + order_row.user.last_name}}</td>
                     <td>{{ order_row.coffee_type.name }}</td>
-                    <td>{{ order_row.amount }}</td>
+                    <td>{{ order_row.amount }} кг</td>
                     <td>{{ order_row.amount * (coffee_price.price25 if current_buyin.orders_total() < 50 else coffee_price.price50) }} руб.</td>
                 </tr>
             {% endfor %}
