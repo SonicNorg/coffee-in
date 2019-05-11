@@ -1,0 +1,17 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-1">
+            <h3><small>{{ help_item.timestamp.strftime("%d.%m.%y %H:%M") }}</small></h3>
+        </div>
+        <div class="col-md-11">
+            <h3>{{ help_item.question }}</h3>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            {% for para in help_item.answer.split('\n') %}
+                <p class="lead">{{ para }}</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>

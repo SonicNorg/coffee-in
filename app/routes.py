@@ -13,7 +13,7 @@ from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceFo
     ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm, SetUserPaymentForm, EditBuyinForm, \
     DeleteOfficeOrderForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
-    OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment
+    OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment, HelpItem
 from app.util import get_open_price, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
     get_old_news, post_news
 
@@ -43,7 +43,7 @@ def status():
         rows = []
     set_cups_form = AddCupsToOfficeForm()
     set_cups_form.number.data = get_cups_for_current_user(current_buyin)
-    return render_template('status.html', title='Статус закупки', user=current_user,
+    return render_template('status.html', title='Мой заказ', user=current_user,
                            current_buyin=current_buyin, delete_row_form=delete_row_form,
                            set_cups_form=set_cups_form,
                            my_own_order=rows)
@@ -80,7 +80,7 @@ def price():
     logging.info("%s", current_price)
     # TODO если нет текущего прайса, то и заказ сделать нельзя!
     form = OrderRowForm()
-    return render_template('price.html', title='Прайс и заказ', coffee_with_prices=coffee_with_prices,
+    return render_template('price.html', title='Выбрать кофе', coffee_with_prices=coffee_with_prices,
                            date_to=current_price.date_to if current_price else None,
                            form=form, add_form=add_form, add_office_form=add_office_form)
 
@@ -201,7 +201,8 @@ def buyin():
     buyins = Buyin.query.order_by(Buyin.created_at.desc()).all()
     current_buyin = get_current_buyin()
     edit_buyin_form = EditBuyinForm(days=current_buyin.days,
-                                    next_date=current_buyin.next_step) if current_buyin else EditBuyinForm()
+                                    next_date=current_buyin.next_step,
+                                    shipment=current_buyin.shipment_price) if current_buyin else EditBuyinForm()
     logging.info('Current buyin = %s', current_buyin)
     proceed_buyin_form = ProceedBuyinForm()
     set_cups_form = AddCupsToOfficeForm()
@@ -356,6 +357,22 @@ def add_news_item():
     return redirect(url_for('status'))
 
 
+@app.route('/help/add', methods=['POST'])
+@roles_required('Босс')
+def add_help_item():
+    form = AddNewsItemForm()
+    if form.validate():
+        db.session.add(HelpItem(question=form.header.data, answer=form.content.data))
+        db.session.commit()
+    else:
+        for fieldName, errorMessages in form.errors.items():
+            for err in errorMessages:
+                logging.error("Error in %s: %s", fieldName, err)
+                flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
+        return redirect(url_for('news'))
+    return redirect(url_for('helps'))
+
+
 @app.route('/payment/set', methods=['POST'])
 @roles_required('Босс')
 def set_payment():
@@ -387,6 +404,7 @@ def edit_buyin():
     if form.validate():
         current_buyin.days = form.days.data
         current_buyin.next_date = form.next_date.data
+        current_buyin.shipment_price = form.shipment.data
         db.session.add(current_buyin)
         db.session.commit()
         flash('Текущая закупка успешно изменена.', 'success')
@@ -395,7 +413,7 @@ def edit_buyin():
             for err in errorMessages:
                 logging.error("Error in %s: %s", fieldName, err)
                 flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
-    return redirect(url_for('buyin_by_users'))
+    return redirect(url_for('buyin'))
 
 
 @app.route('/officeorder/delete', methods=['POST'])
@@ -406,6 +424,13 @@ def delete_office_order():
     db.session.commit()
     flash('Кофе удален из офиса', 'success')
     return redirect(url_for('buyin'))
+
+
+@app.route('/help')
+@login_required
+def helps():
+    form = AddNewsItemForm()
+    return render_template('help.html', add_form=form, help_items=HelpItem.query.order_by(HelpItem.id).all())
 
 
 @app.context_processor

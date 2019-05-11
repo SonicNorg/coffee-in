@@ -1,0 +1,24 @@
+{% extends 'flask_user/_authorized_base.html' %}
+
+{% block content %}
+<h2>Справка</h2>
+{% if current_user.has_roles('Босс') %}
+    <h3>Добавить вопрос и ответ</h3>
+    <form action="{{ url_for('add_help_item') }}" method="post">
+        {{ add_form.hidden_tag() }}
+        <div class="form-group">
+            {{ add_form.header.label }}
+            {{ add_form.header(class='form-control') }}
+        </div>
+        <div class="form-group">
+            {{ add_form.content.label }}
+            {{ add_form.content(class='form-control') }}
+        </div>
+            {{ add_form.submit() }}
+        </div>
+    </form>
+{% endif %}
+{% for help_item in help_items %}
+    {% include 'fragments/help_item.html' %}
+{% endfor %}
+{% endblock %}

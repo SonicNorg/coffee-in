@@ -290,6 +290,19 @@ class NewsItem(db.Model):
     header = db.Column(db.String(120, collation='NOCASE'))
     content = db.Column(db.String(1024, collation='NOCASE'))
 
+    def set_content(self, content):
+        self.content = content.replace("\n", "<br>")
+
+
+class HelpItem(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    timestamp = db.Column(db.DateTime(), default=datetime.now)
+    question = db.Column(db.String(240, collation='NOCASE'))
+    answer = db.Column(db.String(1024, collation='NOCASE'))
+
+    def set_answer(self, answer):
+        self.answer = answer.replace("\n", "<br>")
+
 
 class UserViewedNews(db.Model):
     id = db.Column(db.Integer(), primary_key=True)

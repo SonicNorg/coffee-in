@@ -59,7 +59,7 @@ class AddCupsToOfficeForm(FlaskForm):
 
 class AddNewsItemForm(FlaskForm):
     header = StringField('Заголовок:', validators=[DataRequired()])
-    content = TextAreaField('Текст новости:', validators=[DataRequired()])
+    content = TextAreaField('Текст:', validators=[DataRequired()])
     submit = SubmitField('Добавить')
 
 
@@ -73,6 +73,7 @@ class SetUserPaymentForm(FlaskForm):
 class EditBuyinForm(FlaskForm):
     days = IntegerField('user_id', validators=[DataRequired()])
     next_date = DateField(validators=[DataRequired()])
+    shipment = IntegerField('Стоимость доставки', validators=[DataRequired()])
     submit = SubmitField('Сохранить закупку')
 
 

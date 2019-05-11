@@ -36,7 +36,7 @@
             </tr>
             <tr>
                 <td>Плюс доставка:</td>
-                <td>{{ current_buyin.shipment_price }} руб.</td>
+                <td>{{ edit_buyin_form.shipment(type='number', style='width: 80px') }} руб.</td>
                 <td></td>
                 <td></td>
                 <td><b>{{ current_buyin.shipment_price + current_buyin.total_cost_without_shipment() }} руб.</b></td>

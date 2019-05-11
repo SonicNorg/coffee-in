@@ -5,9 +5,12 @@
     <div class="container-fluid">
         <div class="btn-group" role="group">
             <a href="{{ url_for('news') }}" class="btn btn-default navbar-btn">Новости <span class="badge">{{ unread_count }}</span></a>
-            <a href="{{ url_for('status') }}" class="btn btn-default navbar-btn">Статус закупки</a>
-            <a href="{{ url_for('price') }}" class="btn btn-default navbar-btn"><b>Заказать</b></a>
+            <a href="{{ url_for('status') }}" class="btn btn-default navbar-btn">Мой заказ</a>
+            <a href="{{ url_for('price') }}" class="btn btn-default navbar-btn">Выбрать кофе</a>
+        </div>
+        <div class="btn-group" role="group">
             <a href="{{ url_for('coffee') }}" class="btn btn-default navbar-btn">Ассортимент кофе</a>
+            <a href="{{ url_for('helps') }}" class="btn btn-default navbar-btn">Справка</a>
         </div>
         <p class="navbar-text navbar-right">Мы рады Вас видеть, {{ current_user.first_name + ' ' + current_user.last_name }}</p>
     {% if current_user.has_roles('Босс') %}
