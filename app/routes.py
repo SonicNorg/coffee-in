@@ -14,7 +14,8 @@ from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceFo
     DeleteOfficeOrderForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
     OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment, HelpItem
-from app.util import get_price_or_current, get_cups_for_current_user, get_current_buyin, get_open_buyin, get_unread_news, \
+from app.util import get_price_or_current, get_cups_for_current_user, get_current_buyin, get_open_buyin, \
+    get_unread_news, \
     get_old_news, post_news
 
 
@@ -62,9 +63,14 @@ def price():
         logging.info("/price")
         if request.method == 'POST':
             if add_form.validate():
-                new_price = CoffeePrice(coffee_type_id=coffee_type_id, price_id=current_price.id,
-                                        price25=add_form.price25.data, price50=add_form.price50.data)
-                db.session.add(new_price)
+                prev_price = CoffeePrice.query.filter(and_(coffee_type_id=coffee_type_id, price_id=current_price.id))
+                if prev_price:
+                    prev_price.price25 = add_form.price25.data
+                    prev_price.price50 = add_form.price50.data
+                else:
+                    prev_price = CoffeePrice(coffee_type_id=coffee_type_id, price_id=current_price.id,
+                                             price25=add_form.price25.data, price50=add_form.price50.data)
+                db.session.add(prev_price)
                 db.session.commit()
             else:
                 for fieldName, errorMessages in add_form.errors.items():
