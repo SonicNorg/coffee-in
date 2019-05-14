@@ -39,27 +39,6 @@
             <td><b>{{ "{0:.2f}".format(current_buyin.shipment_price + current_buyin.total_cost_without_shipment()) }} руб.</b></td>
         </tr>
     </table>
-    <table class="table table-hover">
-        <thead>
-            <th>Кофе</th>
-            <th>Описание</th>
-            <th>От 25 кг</th>
-            <th>От 50 кг</th>
-        </thead>
-        <tbody>
-            {% if not current_buyin.office_orders %}
-            <tr><td colspan="4">Администратор закупки пока ничего не выбрал.</td></tr>
-            {% else %}
-                {% for office_order, coffee_price in current_buyin.office_coffee_prices() %}
-                <tr>
-                    <td>{{ office_order.coffee_type.name}} </td>
-                    <td>{{ office_order.coffee_type.description }} </td>
-                    <td>{{ coffee_price.price25 }} руб.</td>
-                    <td>{{ coffee_price.price50 }} руб.</td>
-                </tr>
-                {% endfor %}
-            {% endif %}
-        </tbody>
-    </table>
+    {% include 'fragments/office_order.html' %}
 </div>
 {% endif %}

@@ -23,17 +23,26 @@
 <h3>Мой заказ домой:
     {% if costs_per_user[1] > 0 %}
     {{ "{0:.2f}".format(costs_per_user[1]) }} руб.
+    {% if current_buyin.state in (states.PLANNING, states.OPEN, states.AWAITING) %}
+    <div class="alert alert-info" style="display:inline">Платить пока не надо</div>
+    {% elif current_buyin.state == states.FIXED and (costs_per_user[1] + 0.01) > payed['amount'] %}
+    <div class="alert alert-warning" style="display:inline">Пора платить!</div>
+    {% elif current_buyin.state == states.FIXED and (costs_per_user[1] + 0.01) <= payed['amount'] %}
+    <div class="alert alert-success" style="display:inline">Вы внесли платеж</div>
+    {% elif current_buyin.state == states.ORDERED and (costs_per_user[1] + 0.01) > payed['amount'] %}
+    <div class="alert alert-danger" style="display:inline">Срочно внесите оплату!</div>
+    {% endif %}
     {% endif %}
 </h3>
 <table class="table table-hover">
     <thead>
     <tr>
+        <th></th>
         <th>Сорт</th>
         <th>Описание</th>
         <th>Кол-во</th>
         <th>От 25 кг</th>
         <th>От 50 кг</th>
-        <th></th>
     </tr>
     </thead>
     <tbody>
@@ -47,12 +56,14 @@
         {{ delete_row_form.hidden_tag() }}
         {{ delete_row_form.id(hidden='hidden', value=order_row.id) }}
         <tr>
+            <td><button type="submit" class="btn btn-link">
+                <span class="glyphicon glyphicon-remove-circle" style="font-size: 1.5em"></span>
+            </button></td>
             <td>{{ order_row.coffee_type.name }}</td>
             <td>{{ order_row.coffee_type.description }}</td>
             <td>{{ order_row.amount }} кг</td>
             <td>{{ coffee_price.price25 * order_row.amount }} руб.</td>
             <td>{{ coffee_price.price50 * order_row.amount }} руб.</td>
-            <td>{{ delete_row_form.submit() }}</td>
         </tr>
     </form>
     {% endfor %}

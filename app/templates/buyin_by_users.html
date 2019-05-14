@@ -25,7 +25,6 @@
         <th>Итого+дост.</th>
         <th>Оплачено</th>
         <th>Внести</th>
-        <th></th>
     </thead>
     <tbody id="payments_body">
     {% for user, costs_per_user, user_payment in users_costs %}
@@ -39,8 +38,12 @@
                 {{ set_payment_form.hidden_tag() }}
                 {{ set_payment_form.user(hidden='hidden', value=user.first_name + ' ' + user.username + ' ' + user.last_name + ' ' + user.email) }}
                 {{ set_payment_form.user_id(hidden='hidden', value=user.id) }}
-                <td>{{ set_payment_form.amount(type='number', style='width: 80px') }}</td>
-                <td>{{ set_payment_form.submit() }}</td>
+                <td>
+                    {{ set_payment_form.amount(type='number', style='width: 80px', step=0.01) }}
+                    <button type="submit" class="btn btn-link">
+                        <span class="glyphicon glyphicon-ok" style="font-size: 1.5em"></span>
+                    </button>
+                </td>
             </form>
         </tr>
     {% endfor %}

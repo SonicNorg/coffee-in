@@ -46,13 +46,16 @@ def status():
     set_cups_form.number.data = get_cups_for_current_user(current_buyin)
     return render_template('status.html', title='Мой заказ', user=current_user,
                            current_buyin=current_buyin, delete_row_form=delete_row_form,
-                           set_cups_form=set_cups_form,
+                           set_cups_form=set_cups_form, states=States,
+                           payed=UserPayment.query.filter(and_(
+                               UserPayment.buyin_id == current_buyin.id, UserPayment.user_id == current_user.id)).first(),
                            my_own_order=rows)
 
 
 @app.route('/price', methods=["GET", "POST"])
 @login_required
 def price():
+    logging.info("/price")
     current_price = get_price_or_current()
     add_office_form = AddOfficeOrderForm()
     if current_price:
@@ -60,10 +63,13 @@ def price():
         coffee_type_id = add_form.coffee.data
         coffee_sorts = CoffeeSort.query.with_entities(CoffeeSort.id, CoffeeSort.name).all()
         add_form.set_choices(coffee_sorts)
-        logging.info("/price")
+        coffee_sorts = CoffeeSort.query.with_entities(CoffeeSort.id, CoffeeSort.name).all()
+        add_form.set_choices(coffee_sorts)
+        coffee_with_prices = CoffeePrice.query.filter(CoffeePrice.price_id == current_price.id).all()
         if request.method == 'POST':
             if add_form.validate():
-                prev_price = CoffeePrice.query.filter(and_(coffee_type_id=coffee_type_id, price_id=current_price.id))
+                prev_price = CoffeePrice.query.filter(and_(CoffeePrice.coffee_type_id == coffee_type_id,
+                                                           CoffeePrice.price_id == current_price.id)).first()
                 if prev_price:
                     prev_price.price25 = add_form.price25.data
                     prev_price.price50 = add_form.price50.data
@@ -72,14 +78,12 @@ def price():
                                              price25=add_form.price25.data, price50=add_form.price50.data)
                 db.session.add(prev_price)
                 db.session.commit()
+                return redirect(url_for('price'))
             else:
                 for fieldName, errorMessages in add_form.errors.items():
                     for err in errorMessages:
                         logging.error("Error in %s: %s", fieldName, err)
                         flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
-        coffee_sorts = CoffeeSort.query.with_entities(CoffeeSort.id, CoffeeSort.name).all()
-        add_form.set_choices(coffee_sorts)
-        coffee_with_prices = CoffeePrice.query.filter(CoffeePrice.price_id == current_price.id).all()
     else:
         add_form = None
         coffee_with_prices = []
@@ -102,6 +106,7 @@ def coffee():
                                   description=add_form.description.data)
             db.session.add(new_sort)
             db.session.commit()
+            return redirect(url_for('coffee'))
         else:
             for fieldName, errorMessages in add_form.errors.items():
                 for err in errorMessages:
@@ -309,42 +314,7 @@ def buyin_by_sorts():
     if not current_buyin:
         return render_template('buyin_by_sorts.html', current_buyin=current_buyin,
                                sorts_all_weights=[], total_sum=0)
-    office_weight_for_each_sort = current_buyin.office_total() / len(current_buyin.office_orders)
-
-    individual_subquery = db.session.query(OrderRow.coffee_type_id) \
-        .filter(OrderRow.buyin_id == current_buyin.id).distinct()
-    office_subquery = db.session.query(OfficeOrder.coffee_type_id) \
-        .filter(OfficeOrder.buyin_id == current_buyin.id).distinct()
-    coffee_ids = individual_subquery.union(office_subquery).distinct()
-    sorts = dict(map(lambda coffee_sort: (coffee_sort.id, coffee_sort),
-                     CoffeeSort.query.filter(CoffeeSort.id.in_(coffee_ids)).all()))
-    individual_weights_per_coffee_id = db.session.query(
-        OrderRow.coffee_type_id, func.sum(OrderRow.amount).label('total')
-    ).filter(and_(OrderRow.buyin_id == current_buyin.id, OrderRow.coffee_type_id.in_(coffee_ids))) \
-        .group_by(OrderRow.coffee_type_id)
-
-    individual_ids_weights = dict(individual_weights_per_coffee_id.all())
-    office_ids_weights = dict(
-        map(lambda of_order: (of_order.coffee_type_id, office_weight_for_each_sort), current_buyin.office_orders))
-    total_ids_weights = dict(office_ids_weights)
-    for coffee_id, weight in individual_ids_weights.items():
-        if coffee_id in office_ids_weights:
-            total_ids_weights[coffee_id] = total_ids_weights[coffee_id] + weight
-        else:
-            total_ids_weights[coffee_id] = weight
-
-    total_sum = 0
-    for _, v in total_ids_weights.items():
-        total_sum += v
-    # individual_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), individual_ids_weights.items()))
-    # office_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), office_ids_weights.items()))
-    # total_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), total_ids_weights.items()))
-
-    sorts_all_weights = list(
-        map(lambda item: (sorts[item[0]], (
-            office_ids_weights[item[0]] if item[0] in office_ids_weights else 0,
-            individual_ids_weights[item[0]] if item[0] in individual_ids_weights else 0, item[1])),
-            total_ids_weights.items()))
+    sorts_all_weights, total_sum = current_buyin.sorts_all_weights()
     return render_template('buyin_by_sorts.html', current_buyin=current_buyin,
                            sorts_all_weights=sorts_all_weights, total_sum=total_sum)
 
@@ -439,6 +409,17 @@ def delete_office_order():
 def helps():
     form = AddNewsItemForm()
     return render_template('help.html', add_form=form, help_items=HelpItem.query.order_by(HelpItem.id).all())
+
+
+@app.route('/all_order')
+@login_required
+def all_order():
+    current_buyin = get_current_buyin()
+    if not current_buyin:
+        return render_template('all_order.html', current_buyin=current_buyin,
+                               sorts_all_weights=[])
+    sorts_all_weights, total_sum = current_buyin.sorts_all_weights()
+    return render_template('all_order.html', current_buyin=current_buyin, sorts_all_weights=sorts_all_weights)
 
 
 @app.context_processor

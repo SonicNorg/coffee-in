@@ -1,0 +1,19 @@
+<h2>По сортам кофе</h2>
+<table class="table table-sm table-hover">
+    <thead>
+        <th width="24%">Сорт кофе</th>
+        <th>В офис</th>
+        <th>Домой</th>
+        <th>Итого</th>
+    </thead>
+    <tbody>
+    {% for sort, weights in sorts_all_weights %}
+        <tr>
+            <td>{{ sort.name }}</td>
+            <td>{{ "{0:.2f}".format(weights[0]) }} кг.</td>
+            <td>{{ "{0:.2f}".format(weights[1]) }} кг.</td>
+            <td><b>{{ "{0:.2f}".format(weights[2]) }} кг.</b></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

@@ -258,6 +258,45 @@ class Buyin(db.Model):
         db.session.commit()
         return True
 
+    def sorts_all_weights(self):
+        office_weight_for_each_sort = (self.office_total() / len(self.office_orders)) if self.office_orders else 0
+
+        individual_subquery = db.session.query(OrderRow.coffee_type_id) \
+            .filter(OrderRow.buyin_id == self.id).distinct()
+        office_subquery = db.session.query(OfficeOrder.coffee_type_id) \
+            .filter(OfficeOrder.buyin_id == self.id).distinct()
+        coffee_ids = individual_subquery.union(office_subquery).distinct()
+        sorts = dict(map(lambda coffee_sort: (coffee_sort.id, coffee_sort),
+                         CoffeeSort.query.filter(CoffeeSort.id.in_(coffee_ids)).all()))
+        individual_weights_per_coffee_id = db.session.query(
+            OrderRow.coffee_type_id, func.sum(OrderRow.amount).label('total')
+        ).filter(and_(OrderRow.buyin_id == self.id, OrderRow.coffee_type_id.in_(coffee_ids))) \
+            .group_by(OrderRow.coffee_type_id)
+
+        individual_ids_weights = dict(individual_weights_per_coffee_id.all())
+        office_ids_weights = dict(
+            map(lambda of_order: (of_order.coffee_type_id, office_weight_for_each_sort), self.office_orders))
+        total_ids_weights = dict(office_ids_weights)
+        for coffee_id, weight in individual_ids_weights.items():
+            if coffee_id in office_ids_weights:
+                total_ids_weights[coffee_id] = total_ids_weights[coffee_id] + weight
+            else:
+                total_ids_weights[coffee_id] = weight
+
+        total_sum = 0
+        for _, v in total_ids_weights.items():
+            total_sum += v
+        # individual_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), individual_ids_weights.items()))
+        # office_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), office_ids_weights.items()))
+        # total_ids_weights = list(map(lambda item: (sorts[item[0]], item[1]), total_ids_weights.items()))
+
+        sorts_all_weights = list(
+            map(lambda item: (sorts[item[0]], (
+                office_ids_weights[item[0]] if item[0] in office_ids_weights else 0,
+                individual_ids_weights[item[0]] if item[0] in individual_ids_weights else 0, item[1])),
+                total_ids_weights.items()))
+        return sorts_all_weights, total_sum
+
 
 class OrderRow(db.Model):
     __tablename__ = 'order_rows'
