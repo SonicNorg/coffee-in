@@ -6,7 +6,7 @@ from enum import Enum
 import sqlalchemy
 from flask_user import UserMixin
 from sqlalchemy import and_, func
-from sqlalchemy.orm import relationship, join
+from sqlalchemy.orm import relationship, join, backref
 
 from app import db
 
@@ -60,6 +60,7 @@ class Price(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     date_from = db.Column(db.Date(), nullable=False)
     date_to = db.Column(db.Date(), nullable=False)
+    # coffee_prices = relationship('CoffeePrice', cascade="all, delete-orphan")
 
     def __repr__(self):
         return '<Price {}, from {} to {}>'.format(
@@ -73,10 +74,14 @@ class CoffeePrice(db.Model):
                                index=True)
     coffee_type = relationship("CoffeeSort", backref="coffee_sorts")
     price_id = db.Column(db.Integer, db.ForeignKey('prices.id', ondelete='CASCADE'), nullable=False)
-    price_ref = relationship(Price, backref="prices")
+    price_ref = relationship(Price, backref="coffee_prices")
     price25 = db.Column(db.Float())
     price50 = db.Column(db.Float())
     __table_args__ = (db.UniqueConstraint(coffee_type_id, price_id),)
+
+    def __repr__(self):
+        return '<CoffeePrice {}: price {}, coffee {}>'.format(
+            self.id, self.price_id, self.coffee_type_id)
 
 
 class States(Enum):
@@ -234,6 +239,9 @@ class Buyin(db.Model):
             self.state = States.OPEN
             content = "Теперь можно начинать заказывать!"
         elif self.state == States.OPEN:
+            self.state = States.AWAITING
+            content = "Изменять заказы больше нельзя, но сумма еще будет меняться!"
+        elif self.state == States.AWAITING:
             self.state = States.FIXED
             from app.util import get_price_or_current
             current = get_price_or_current()

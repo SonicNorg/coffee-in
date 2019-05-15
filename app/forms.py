@@ -75,3 +75,7 @@ class EditBuyinForm(FlaskForm):
 class DeleteByIdForm(FlaskForm):
     id = IntegerField('id', validators=[DataRequired()])
     submit = SubmitField('Убрать')
+
+
+class EmptyForm(FlaskForm):
+    submit = SubmitField('Заполнить текущий прайс копией предыдущего')

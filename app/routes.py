@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import copy
 from datetime import datetime
 
 from flask import render_template, url_for, flash, request
@@ -11,12 +12,14 @@ from werkzeug.utils import redirect
 from app import app, db
 from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteByIdForm, \
     ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm, SetUserPaymentForm, EditBuyinForm, \
-    DeleteByIdForm
+    DeleteByIdForm, EmptyForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
     OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment, HelpItem
 from app.util import get_price_or_current, get_cups_for_current_user, get_current_buyin, get_open_buyin, \
     get_unread_news, \
     get_old_news, post_news
+
+# TODO: split GETs and POSTs to two files
 
 
 @app.route('/news')
@@ -199,6 +202,7 @@ def delete_order_row():
 @roles_required('Босс')
 def manage_prices():
     add_form = CreatePriceForm()
+    duplicate = EmptyForm()
     if request.method == 'POST' and add_form.validate():
         new_price = Price(date_from=add_form.date_from.data, date_to=add_form.date_to.data)
         db.session.add(new_price)
@@ -209,7 +213,45 @@ def manage_prices():
                 logging.error("Error in %s: %s", fieldName, err)
                 flash('Ошибка в {}: {}'.format(fieldName, err), 'error')
     prices = Price.query.order_by(Price.date_to.desc()).all()
-    return render_template('manage_prices.html', add_form=add_form, prices=prices)
+    return render_template('manage_prices.html', add_form=add_form, prices=prices, duplicate=duplicate)
+
+
+@app.route('/price/duplicate', methods=['POST'])
+@roles_required('Босс')
+def duplicate_price():
+    current = get_price_or_current()
+    current_buyin = get_current_buyin()
+    logging.info("Entered duplicate_price! Current price: %s", current)
+    if current and (not current_buyin or
+                    current_buyin.state in [States.PLANNING, States.OPEN, States.AWAITING, States.FINISHED]):
+        old_price = Price.query.filter(Price.id != current.id).order_by(Price.id.desc()).first()
+        logging.info("Old price: %s", old_price)
+        if old_price:
+            logging.info("Old prices: %s", old_price.coffee_prices)
+            CoffeePrice.query.filter(CoffeePrice.price_id == current.id).delete()
+            db.session.flush()
+            db.session.refresh(current)
+            for coffee_price in old_price.coffee_prices:
+                logging.info("ENTERED LOOP: Current prices: %s", current.coffee_prices)
+                logging.info("coffee_price: %s", coffee_price)
+                logging.info("Current prices: %s", current.coffee_prices)
+                current.coffee_prices.append(CoffeePrice(
+                    id=None,
+                    coffee_type_id=coffee_price.coffee_type_id,
+                    price_id=current.id,
+                    price25=coffee_price.price25,
+                    price50=coffee_price.price50
+                ))
+                logging.info("Current prices: %s", current.coffee_prices)
+            logging.info("LOOP FINISHED: Current prices: %s", current.coffee_prices)
+            db.session.commit()
+            flash('Прайс заполнен по предыдущему. Отличные цены можно просто внести, не удаляя, они заменят старые.',
+                  'success')
+            logging.info("SUCCESS: Current prices: %s", current.coffee_prices)
+        return redirect(url_for('price'))
+    else:
+        flash('Нет текущего прайса, или закупка закрыта для изменений!', 'error')
+    return redirect(url_for('manage_prices'))
 
 
 @app.route('/buyin/all', methods=['GET', 'POST'])
