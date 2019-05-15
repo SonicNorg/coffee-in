@@ -37,11 +37,6 @@ class BuyinForm(FlaskForm):
     submit = SubmitField('Создать новую закупку')
 
 
-class DeleteOrderRowForm(FlaskForm):
-    id = IntegerField('id', validators=[DataRequired()])
-    submit = SubmitField('Убрать')
-
-
 class ProceedBuyinForm(FlaskForm):
     id = IntegerField('id', validators=[DataRequired()])
     next_date = DateField('Следующее изменение статуса:', validators=[DataRequired()])
@@ -77,6 +72,6 @@ class EditBuyinForm(FlaskForm):
     submit = SubmitField('Сохранить закупку')
 
 
-class DeleteOfficeOrderForm(FlaskForm):
+class DeleteByIdForm(FlaskForm):
     id = IntegerField('id', validators=[DataRequired()])
     submit = SubmitField('Убрать')

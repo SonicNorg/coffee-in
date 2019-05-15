@@ -9,9 +9,9 @@ from sqlalchemy import and_, outerjoin, func
 from werkzeug.utils import redirect
 
 from app import app, db
-from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteOrderRowForm, \
+from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteByIdForm, \
     ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm, SetUserPaymentForm, EditBuyinForm, \
-    DeleteOfficeOrderForm
+    DeleteByIdForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
     OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment, HelpItem
 from app.util import get_price_or_current, get_cups_for_current_user, get_current_buyin, get_open_buyin, \
@@ -19,8 +19,6 @@ from app.util import get_price_or_current, get_cups_for_current_user, get_curren
     get_old_news, post_news
 
 
-@app.route('/')
-@app.route('/index')
 @app.route('/news')
 @login_required
 def news():
@@ -33,10 +31,12 @@ def news():
                            unread_news=unread_news, old_news=old_news, add_form=AddNewsItemForm())
 
 
+@app.route('/')
+@app.route('/index')
 @app.route('/status')
 @login_required
 def status():
-    delete_row_form = DeleteOrderRowForm()
+    delete_row_form = DeleteByIdForm()
     current_buyin = get_current_buyin()
     if current_buyin:
         rows = current_buyin.individual_rows_with_prices(current_user.id)
@@ -93,6 +93,19 @@ def price():
     return render_template('price.html', title='Выбрать кофе', coffee_with_prices=coffee_with_prices,
                            date_to=current_price.date_to if current_price else None,
                            form=form, add_form=add_form, add_office_form=add_office_form)
+
+
+@app.route('/price/delete', methods=["POST"])
+@roles_required('Босс')
+def delete_price():
+    form = DeleteByIdForm()
+    if get_open_buyin() and form.validate():
+        CoffeePrice.query.filter(CoffeePrice.id == form.id.data).delete()
+        db.session.commit()
+        flash('Кофе удален из прайса', 'success')
+    else:
+        flash('Нет открытой закупки!', 'error')
+    return redirect(url_for('price'))
 
 
 @app.route('/coffee', methods=["GET", "POST"])
@@ -166,7 +179,7 @@ def order():
 @app.route('/order/delete', methods=['POST'])
 @login_required
 def delete_order_row():
-    delete_row_form = DeleteOrderRowForm()
+    delete_row_form = DeleteByIdForm()
     logging.debug("Try to delete row id=%s", delete_row_form.id.data)
     current_buyin = get_open_buyin()
     if not current_buyin:
@@ -203,7 +216,7 @@ def manage_prices():
 @roles_required('Босс')
 def buyin():
     buyin_form = BuyinForm()
-    delete_office_order_form = DeleteOfficeOrderForm()
+    delete_office_order_form = DeleteByIdForm()
     if request.method == 'POST':
         new_buyin = Buyin(state=States.OPEN, next_step=buyin_form.next_step.data, created_at=datetime.now())
         post_news("Создана новая закупка!", "Статус новой закупки - {}".format(new_buyin.state.value[0]))
@@ -294,8 +307,8 @@ def buyin_by_users():
     users_costs = []
     total_sum = 0
     users_with_payments_query_result = db.session.query(User, UserPayment) \
-        .select_from(outerjoin(User, UserPayment, and_(
-        UserPayment.user_id == User.id, UserPayment.buyin_id == current_buyin.id), False)) \
+        .select_from(outerjoin(User, UserPayment, and_(UserPayment.user_id == User.id,
+                                                       UserPayment.buyin_id == current_buyin.id), False)) \
         .filter(User.id.in_(users_ids)) \
         .order_by(User.last_name, User.id).all()
     for user, user_payment in users_with_payments_query_result:
@@ -397,10 +410,13 @@ def edit_buyin():
 @app.route('/officeorder/delete', methods=['POST'])
 @roles_required('Босс')
 def delete_office_order():
-    delete_office_order_form = DeleteOfficeOrderForm()
-    OfficeOrder.query.filter(OfficeOrder.id == delete_office_order_form.id.data).delete()
-    db.session.commit()
-    flash('Кофе удален из офиса', 'success')
+    delete_office_order_form = DeleteByIdForm()
+    if get_open_buyin() and delete_office_order_form.validate():
+        OfficeOrder.query.filter(OfficeOrder.id == delete_office_order_form.id.data).delete()
+        db.session.commit()
+        flash('Кофе удален из офиса', 'success')
+    else:
+        flash('Нет открытой закупки!', 'error')
     return redirect(url_for('buyin'))
 
 
