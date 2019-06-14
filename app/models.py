@@ -14,8 +14,8 @@ from app import db
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(120, collation='NOCASE'), index=True, unique=True)
-    email = db.Column(db.String(120, collation='NOCASE'), index=True, unique=True)
+    username = db.Column(db.String(120, collation='utf8mb4_general_ci'), index=True, unique=True)
+    email = db.Column(db.String(120, collation='utf8mb4_general_ci'), index=True, unique=True)
     password = db.Column(db.String(128))
     active = db.Column(db.Boolean())
     email_confirmed_at = db.Column(db.DateTime())
@@ -346,15 +346,15 @@ class NewsItem(db.Model):
     __tablename__ = 'news'
     id = db.Column(db.Integer(), primary_key=True)
     timestamp = db.Column(db.DateTime(), default=datetime.now)
-    header = db.Column(db.String(120, collation='NOCASE'))
-    content = db.Column(db.String(1024, collation='NOCASE'))
+    header = db.Column(db.String(120, collation='utf8mb4_general_ci'))
+    content = db.Column(db.String(1024, collation='utf8mb4_general_ci'))
 
 
 class HelpItem(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     timestamp = db.Column(db.DateTime(), default=datetime.now)
-    question = db.Column(db.String(240, collation='NOCASE'))
-    answer = db.Column(db.String(1024, collation='NOCASE'))
+    question = db.Column(db.String(240, collation='utf8mb4_general_ci'))
+    answer = db.Column(db.String(1024, collation='utf8mb4_general_ci'))
 
 
 class UserViewedNews(db.Model):
