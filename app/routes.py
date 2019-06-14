@@ -90,7 +90,7 @@ def price():
     else:
         add_form = None
         coffee_with_prices = []
-    logging.info("%s", current_price)
+    logging.info("Current price: %s", current_price)
     # TODO если нет текущего прайса, то и заказ сделать нельзя!
     form = OrderRowForm()
     return render_template('price.html', title='Выбрать кофе', coffee_with_prices=coffee_with_prices,
@@ -379,7 +379,7 @@ def buyin_by_sorts():
 def add_news_item():
     form = AddNewsItemForm()
     if form.validate():
-        db.session.add(NewsItem(header=form.header.data, content=form.content.data))
+        post_news(form.header.data, form.content.data)
         db.session.commit()
     else:
         for fieldName, errorMessages in form.errors.items():

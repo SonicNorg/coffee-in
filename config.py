@@ -13,9 +13,9 @@ class Config(object):
     BABEL_DEFAULT_LOCALE = 'ru'
     BABEL_DEFAULT_TIMEZONE = 'UTC+7'
 
-    APP_VERSION = '0.82'
+    APP_VERSION = '0.85'
 
-    USER_EMAIL_SENDER_EMAIL = os.environ.get('USER_EMAIL_SENDER_EMAIL') or "nepavel.k@yandex.ru"
+    USER_EMAIL_SENDER_EMAIL = os.environ.get('USER_EMAIL_SENDER_EMAIL') or "pavel@nepavel.name"
     MAIL_SERVER = os.environ.get('MAIL_SERVER')  # 'smtp.yandex.ru'
     MAIL_PORT = os.environ.get('MAIL_PORT')  # 465
     MAIL_USE_TLS = False

@@ -6,7 +6,7 @@ from enum import Enum
 import sqlalchemy
 from flask_user import UserMixin
 from sqlalchemy import and_, func
-from sqlalchemy.orm import relationship, join, backref
+from sqlalchemy.orm import relationship, join
 
 from app import db
 
@@ -248,7 +248,7 @@ class Buyin(db.Model):
             if not current:
                 return False
             self.price_id = current.id
-            content = "Изменять заказы больше нельзя, прошу сдавать деньги!"
+            content = "Изменять заказы больше нельзя, прошу вносить оплату!"
         elif self.state == States.FIXED:
             self.state = States.ORDERED
             content = "Ожидаем получения оплаты поставщиком и отгрузки свежеобжаренных вкусняшек!"

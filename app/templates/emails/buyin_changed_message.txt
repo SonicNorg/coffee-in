@@ -1,9 +1,0 @@
-{% extends 'flask_user/emails/base_subject.txt' %}
-
-{% block subject %}
-Здравствуйте, {{ user.first_name }}!
-Статус закупки изменился на {{ state }}.
-Сумма вашего заказа: {{ "{0:.2f}".format(total_cost) }} руб.
-Домой вы взяли: {{ individual_amount }} кг
-
-{% endblock %}

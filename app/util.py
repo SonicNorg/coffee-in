@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from flask_login import current_user
+from flask_mail import Message
 from sqlalchemy import and_, join
 
-from app import db
-from app.models import Price, OfficeOrderRow, States, Buyin, NewsItem, UserViewedNews
+from app import db, mail, app
+from app.models import Price, OfficeOrderRow, States, Buyin, NewsItem, UserViewedNews, User
 
 
 def get_price_or_current(price_id=None):
@@ -55,6 +56,34 @@ def get_old_news():
 
 
 def post_news(header, content):
-    # todo add flask-mail and send mails with news
     db.session.add(NewsItem(header=header, content=content))
     db.session.flush()
+    send_mail("emails/news.txt", header, content)
+
+
+def send_mail(template, subject, content, buyin=None):
+    import logging
+    logging.info("Sending mails %s to users...", subject)
+    if buyin is None:
+        users = User.query.filter(User.active).all()
+    else:
+        # todo отправлять письма только участникам закупки
+        users = User.query.filter(User.active).all()
+
+    from flask import render_template
+    with mail.connect() as conn:
+        for u in users:
+            recipients = [(u.username, u.email)]
+            try:
+                body = render_template(template, states=States, buyin=buyin, content=content, user=u,
+                                       app_name=app.config['USER_APP_NAME'])
+                msg = Message(subject=subject,
+                              sender=(app.config['USER_EMAIL_SENDER_NAME'], app.config['USER_EMAIL_SENDER_EMAIL']),
+                              reply_to=(app.config['USER_EMAIL_SENDER_NAME'], app.config['USER_EMAIL_SENDER_EMAIL']),
+                              recipients=recipients,
+                              body=body)
+                conn.send(msg)
+                logging.info("Mail %s to %s sent.", subject, msg.recipients)
+
+            except Exception:
+                logging.exception("Failed to send mail %s to %s!", subject, recipients)

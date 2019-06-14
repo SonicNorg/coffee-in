@@ -4,3 +4,4 @@ flask-sqlalchemy
 flask-migrate
 flask-user
 Flask-BabelEx
+flask-mail

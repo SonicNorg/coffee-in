@@ -2,6 +2,7 @@
 from datetime import datetime
 
 from flask import Flask
+from flask_mail import Mail
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_babelex import Babel
@@ -17,6 +18,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+mail = Mail(app)
 
 from app.models import User, Role
 from app import routes, models
