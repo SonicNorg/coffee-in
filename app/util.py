@@ -66,12 +66,14 @@ def post_news(header, content):
 
 
 def send_mails_async(template, subject, content, buyin=None):
-    import threading
-    thread1 = threading.Thread(target=send_mail, args=(template, subject, content, buyin))
-    thread1.start()
+    # import threading
+    # thread1 = threading.Thread(target=send_mail, args=(template, subject, content, buyin))
+    # thread1.start()
+    import asyncio
+    asyncio.run(send_mail(template, subject, content, buyin))
 
 
-def send_mail(template, subject, content, buyin=None):
+async def send_mail(template, subject, content, buyin=None):
     import logging
     logging.info("Sending mails %s to users...", subject)
     if buyin is None:
@@ -85,8 +87,7 @@ def send_mail(template, subject, content, buyin=None):
         for u in users:
             recipients = [(u.username, u.email)]
             try:
-                body = render_template(template, states=States, buyin=buyin, content=content, user=u,
-                                       app_name=app.config['USER_APP_NAME'])
+                body = render_template(template, states=States, buyin=buyin, content=content, user=u)
                 msg = Message(subject=subject,
                               sender=(app.config['USER_EMAIL_SENDER_NAME'], app.config['USER_EMAIL_SENDER_EMAIL']),
                               reply_to=(app.config['USER_EMAIL_SENDER_NAME'], app.config['USER_EMAIL_SENDER_EMAIL']),
