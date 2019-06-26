@@ -33,7 +33,7 @@ class CreatePriceForm(FlaskForm):
 
 
 class BuyinForm(FlaskForm):
-    next_step = DateField('Сбор денег начнется:')
+    next_step = DateField('Согласование с поставщиком начнется:')
     submit = SubmitField('Создать новую закупку')
 
 

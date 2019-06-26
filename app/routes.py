@@ -50,8 +50,8 @@ def status():
     return render_template('status.html', title='Мой заказ', user=current_user,
                            current_buyin=current_buyin, delete_row_form=delete_row_form,
                            set_cups_form=set_cups_form, states=States,
-                           payed=UserPayment.query.filter(and_(
-                               UserPayment.buyin_id == current_buyin.id, UserPayment.user_id == current_user.id)).first(),
+                           payed=(0 if not current_buyin else UserPayment.query.filter(and_(
+                               UserPayment.buyin_id == current_buyin.id, UserPayment.user_id == current_user.id)).first()),
                            my_own_order=rows)
 
 

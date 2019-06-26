@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from flask_login import current_user
@@ -56,9 +57,18 @@ def get_old_news():
 
 
 def post_news(header, content):
-    db.session.add(NewsItem(header=header, content=content))
-    db.session.flush()
-    send_mail("emails/news.txt", header, content)
+    try:
+        db.session.add(NewsItem(header=header, content=content))
+        db.session.flush()
+        send_mails_async("emails/news.txt", header, content)
+    except Exception:
+        logging.exception("Failed to post news/send mails!")
+
+
+def send_mails_async(template, subject, content, buyin=None):
+    import threading
+    thread1 = threading.Thread(target=send_mail, args=(template, subject, content, buyin))
+    thread1.start()
 
 
 def send_mail(template, subject, content, buyin=None):
