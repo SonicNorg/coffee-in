@@ -8,4 +8,4 @@
 
 --
 С уважением,
-{{ app_name }}
+{{ user_manager.app.config['USER_APP_NAME'] }}, {{ user_manager.app.config['APP_URL'] }}

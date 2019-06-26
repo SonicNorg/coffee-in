@@ -14,6 +14,7 @@ class Config(object):
     BABEL_DEFAULT_TIMEZONE = 'UTC+7'
 
     APP_VERSION = '0.85'
+    APP_URL = 'coffee-in.nepavel.name'
 
     USER_EMAIL_SENDER_EMAIL = os.environ.get('USER_EMAIL_SENDER_EMAIL') or "pavel@nepavel.name"
     MAIL_SERVER = os.environ.get('MAIL_SERVER')  # 'smtp.yandex.ru'
