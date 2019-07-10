@@ -66,7 +66,7 @@ class SetUserPaymentForm(FlaskForm):
 
 
 class EditBuyinForm(FlaskForm):
-    days = IntegerField('user_id', validators=[DataRequired()])
+    days = IntegerField(validators=[DataRequired()])
     next_date = DateField(validators=[DataRequired()])
     shipment = IntegerField('Стоимость доставки', validators=[DataRequired()])
     submit = SubmitField('Сохранить закупку')
@@ -74,6 +74,12 @@ class EditBuyinForm(FlaskForm):
 
 class DeleteByIdForm(FlaskForm):
     id = IntegerField('id', validators=[DataRequired()])
+    submit = SubmitField('Убрать')
+
+
+class DeleteAnotherForm(FlaskForm):
+    id = IntegerField('id', validators=[DataRequired()])
+    type = StringField('type', validators=[DataRequired()])
     submit = SubmitField('Убрать')
 
 

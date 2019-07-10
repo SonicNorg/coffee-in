@@ -12,7 +12,7 @@ from werkzeug.utils import redirect
 from app import app, db
 from app.forms import OrderRowForm, AddToPriceForm, AddCoffeeForm, CreatePriceForm, BuyinForm, DeleteByIdForm, \
     ProceedBuyinForm, AddOfficeOrderForm, AddCupsToOfficeForm, AddNewsItemForm, SetUserPaymentForm, EditBuyinForm, \
-    DeleteByIdForm, EmptyForm
+    DeleteByIdForm, EmptyForm, DeleteAnotherForm
 from app.models import CoffeePrice, CoffeeSort, Price, Buyin, States, OrderRow, OfficeOrder, \
     OfficeOrderRow, UserViewedNews, NewsItem, User, UserPayment, HelpItem
 from app.util import get_price_or_current, get_cups_for_current_user, get_current_buyin, get_open_buyin, \
@@ -276,7 +276,7 @@ def buyin():
     return render_template('buyins.html', title='Управление закупкой', buyin_form=buyin_form,
                            buyins=buyins, current_buyin=current_buyin, set_cups_form=set_cups_form,
                            proceed_buyin_form=proceed_buyin_form, edit_buyin_form=edit_buyin_form,
-                           delete_office_order_form=delete_office_order_form)
+                           delete_office_order_form=delete_office_order_form, delete_another=DeleteAnotherForm())
 
 
 @app.route('/buyin/proceed', methods=['POST'])
@@ -457,6 +457,27 @@ def delete_office_order():
         OfficeOrder.query.filter(OfficeOrder.id == delete_office_order_form.id.data).delete()
         db.session.commit()
         flash('Кофе удален из офиса', 'success')
+    else:
+        flash('Нет открытой закупки!', 'error')
+    return redirect(url_for('buyin'))
+
+
+@app.route('/order/delete_another', methods=['POST'])
+@roles_required('Босс')
+def del_other_order():
+    delete_another_form = DeleteAnotherForm()
+    if get_open_buyin() and delete_another_form.validate():
+        if delete_another_form.type.data == 'office':
+            row = OfficeOrderRow.query.filter(OfficeOrderRow.id == delete_another_form.id.data).first()
+            row.cups_per_day = 0.0
+            db.session.commit()
+            flash('Заказ удален из офиса', 'success')
+        elif delete_another_form.type.data == 'individual':
+            OrderRow.query.filter(OrderRow.id == delete_another_form.id.data).delete()
+            db.session.commit()
+            flash('Личный заказ удален', 'success')
+        else:
+            flash('Неизвестный тип заказа!', 'error')
     else:
         flash('Нет открытой закупки!', 'error')
     return redirect(url_for('buyin'))

@@ -16,7 +16,7 @@
             <td colspan="4"><b>{{ current_buyin.state.value[0] }}</b></td>
         </tr>
         <tr>
-            <td>{{ current_buyin.state.value[1] }}:</td>
+            <td>{{ current_buyin.state.next().value[1] }}:</td>
             <td colspan="4">{{ current_buyin.next_step.strftime("%d.%m.%Y") }}</td>
         </tr>
         <tr>

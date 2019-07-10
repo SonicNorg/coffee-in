@@ -7,7 +7,7 @@
         <h4>Создать новую закупку</h4>
         <form action="{{ url_for('buyin') }}" method="post">
             {{ buyin_form.hidden_tag() }}
-            {{ buyin_form.next_step.label }}
+            {{ current_buyin.state.next().value[1] }}
             {{ buyin_form.next_step(type='date') }}
 
             {{ buyin_form.submit() }}
@@ -16,16 +16,23 @@
         <h2>Заказы в офис</h2>
         <table class="table table-hover">
             <thead>
+                <th></th>
                 <th>Кто</th>
                 <th>Чашек в день</th>
-                <!--<th>Итого</th>-->
             </thead>
             <tbody>
             {% for office_order_row in current_buyin.office_order_rows %}
                 <tr>
-                    <td>{{ office_order_row.user.first_name + ' ' + office_order_row.user.username + ' ' + office_order_row.user.last_name}}</td>
-                    <td>{{ office_order_row.cups_per_day }}</td>
-                    <!--<td>{#{ office_order[0].amount * (office_order[1].price25 if current_buyin.orders_total() < 50 else office_order[1].price50) }#} руб.</td>-->
+                    <form action="{{ url_for('del_other_order') }}" method="post">
+                        {{ delete_another.hidden_tag() }}
+                        {{ delete_another.id(hidden='hidden', value=office_order_row.id) }}
+                        {{ delete_another.type(hidden='hidden', value='office') }}
+                        <td><button type="submit" class="btn btn-link">
+                            <span class="glyphicon glyphicon-remove-circle" style="font-size: 1.5em"></span>
+                        </button></td>
+                        <td>{{ office_order_row.user.first_name + ' ' + office_order_row.user.username + ' ' + office_order_row.user.last_name}}</td>
+                        <td>{{ office_order_row.cups_per_day }}</td>
+                    </form>
                 </tr>
             {% endfor %}
             </tbody>
@@ -33,6 +40,7 @@
         <h2>Заказы домой</h2>
         <table class="table table-hover">
             <thead>
+                <th></th>
                 <th>Кто</th>
                 <th>Чего</th>
                 <th>Сколько</th>
@@ -41,10 +49,18 @@
             <tbody>
             {% for order_row, coffee_price in current_buyin.individual_rows_with_prices() %}
                 <tr>
-                    <td>{{ order_row.user.first_name + ' ' + order_row.user.username + ' ' + order_row.user.last_name}}</td>
-                    <td>{{ order_row.coffee_type.name }}</td>
-                    <td>{{ order_row.amount }} кг</td>
-                    <td>{{ order_row.amount * (coffee_price.price25 if current_buyin.orders_total() < 50 else coffee_price.price50) }} руб.</td>
+                    <form action="{{ url_for('del_other_order') }}" method="post">
+                        {{ delete_another.hidden_tag() }}
+                        {{ delete_another.id(hidden='hidden', value=order_row.id) }}
+                        {{ delete_another.type(hidden='hidden', value='individual') }}
+                        <td><button type="submit" class="btn btn-link">
+                            <span class="glyphicon glyphicon-remove-circle" style="font-size: 1.5em"></span>
+                        </button></td>
+                        <td>{{ order_row.user.first_name + ' ' + order_row.user.username + ' ' + order_row.user.last_name}}</td>
+                        <td>{{ order_row.coffee_type.name }}</td>
+                        <td>{{ order_row.amount }} кг</td>
+                        <td>{{ order_row.amount * (coffee_price.price25 if current_buyin.orders_total() < 50 else coffee_price.price50) }} руб.</td>
+                    </form>
                 </tr>
             {% endfor %}
             </tbody>
@@ -53,7 +69,7 @@
             {{ proceed_buyin_form.hidden_tag() }}
             {{ proceed_buyin_form.id(hidden='hidden', value=current_buyin.id) }}
             {% if current_buyin.state.next().has_next() %}
-            {{ current_buyin.state.next().value[1] }}: {{ proceed_buyin_form.next_date(type='date') }}
+            {{ current_buyin.state.value[1] }}: {{ proceed_buyin_form.next_date(type='date') }}
             {% else %}
             {{ proceed_buyin_form.next_date(type='date', hidden='hidden', value=today().strftime("%Y-%m-%d")) }}
             {% endif %}
