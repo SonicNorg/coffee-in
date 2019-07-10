@@ -70,10 +70,14 @@ def send_mails_async(template, subject, content, buyin=None):
     # thread1 = threading.Thread(target=send_mail, args=(template, subject, content, buyin))
     # thread1.start()
     import asyncio
-    asyncio.run(send_mail(template, subject, content, buyin))
+    loop = asyncio.get_event_loop()
+    try:
+        asyncio.run(send_mail(loop, template, subject, content, buyin))
+    finally:
+        loop.close()
 
 
-async def send_mail(template, subject, content, buyin=None):
+async def send_mail(loop, template, subject, content, buyin=None):
     import logging
     logging.info("Sending mails %s to users...", subject)
     if buyin is None:
@@ -98,3 +102,4 @@ async def send_mail(template, subject, content, buyin=None):
 
             except Exception:
                 logging.exception("Failed to send mail %s to %s!", subject, recipients)
+    loop.stop()
